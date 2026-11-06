@@ -196,9 +196,6 @@ pub fn lex_file(file_id: u32) -> Vec<token> {
                 }
             }
             kind = TokenKindNumber;
-        } else if let Some(q) = quote_start(b, i) {
-            i = scan_quoted(b, q, file_id, &src);
-            kind = if b[q] == b'"' { TokenKindString } else { TokenKindChar };
         } else if c == b'\'' && crust && b.get(i + 1).is_some_and(|&d| is_ident_start(d)) && {
             let mut j = i + 1;
             while j < b.len() && is_ident_cont(b[j]) {
@@ -211,6 +208,9 @@ pub fn lex_file(file_id: u32) -> Vec<token> {
                 i += 1;
             }
             kind = TokenKindLifetime;
+        } else if let Some(q) = quote_start(b, i) {
+            i = scan_quoted(b, q, file_id, &src);
+            kind = if b[q] == b'"' { TokenKindString } else { TokenKindChar };
         } else if is_ident_start(c) {
             while i < b.len() && is_ident_cont(b[i]) {
                 i += 1;
