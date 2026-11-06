@@ -453,7 +453,7 @@ fn write_outputs(
                 match opts.emit {
                     EmitExe => {
                         let out = opts.output.clone().unwrap_or_else(|| PathBuf::from("a.out"));
-                        toolchain::link(&objs, &out, &opts.lib_dirs, &opts.libs, false)
+                        toolchain::link(&objs, &out, &opts.lib_dirs, &opts.libs, false, opts.debug)
                     }
                     EmitStaticlib => {
                         let out = opts
@@ -467,7 +467,7 @@ fn write_outputs(
                             .output
                             .clone()
                             .unwrap_or_else(|| PathBuf::from(format!("lib{first}.so")));
-                        toolchain::link(&objs, &out, &opts.lib_dirs, &opts.libs, true)
+                        toolchain::link(&objs, &out, &opts.lib_dirs, &opts.libs, true, opts.debug)
                     }
                 }
             }

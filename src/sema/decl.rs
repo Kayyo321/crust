@@ -516,11 +516,6 @@ impl sema<'_> {
             }
             return None;
         }
-        if is_ref(ty.ty) || is_slice(ty.ty) {
-            if id.init.is_none() {
-                // Allowed: assigned later, checked by definite initialization.
-            }
-        }
         let lid = self.new_local(name, ty, nsp, true, false);
         self.scopes.last_mut().unwrap().ord.insert(name, BindingLocal(lid));
         let init = match &id.init {

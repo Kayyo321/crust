@@ -98,8 +98,7 @@ impl evaluator<'_> {
 
     fn binary(&mut self, min: u8) -> pp_val {
         let mut lhs = self.unary();
-        loop {
-            let Some(t) = self.peek() else { break };
+        while let Some(t) = self.peek() {
             if t.kind != TokenKindPunct {
                 break;
             }

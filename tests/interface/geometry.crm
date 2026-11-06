@@ -1,0 +1,39 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module geometry;
+
+#include <math.h>
+
+export constexpr int MaxPoints = 1024;
+
+export struct point {
+    double x;
+    double y;
+};
+
+export enum Axis : int {
+    AxisX,
+    AxisY,
+};
+
+export typedef struct point point_t;
+
+double square(double v) {
+    return v * v;
+}
+
+export double distance(struct point a, struct point b) {
+    unsafe {
+        // SAFETY: sqrt is a pure function with no preconditions.
+        return sqrt(square(a.x - b.x) + square(a.y - b.y));
+    }
+}
+
+[[crust::c_abi]] export double geometry_distance(struct point a, struct point b) {
+    return distance(a, b);
+}
+
+export ref double pick_x(ref struct point p) {
+    return ref p->x;
+}

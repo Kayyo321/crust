@@ -76,8 +76,19 @@ pub fn compile_ir(
     }
     if debug {
         c.arg("-g");
+        if asan_available() {
+            c.arg("-fsanitize=address");
+        }
     }
     run(&mut c)
+}
+
+/// Whether clang's AddressSanitizer runtime is installed. `-g` builds use
+/// it when it is (docs/CLI.md); without it, `-g` only adds debug info.
+pub fn asan_available() -> bool {
+    let Ok(out) = Command::new(clang()).arg("-print-runtime-dir").output() else { return false };
+    let dir = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
+    dir.join("libclang_rt.asan-x86_64.a").is_file() || dir.join("libclang_rt.asan.a").is_file()
 }
 
 pub fn link(
@@ -86,9 +97,13 @@ pub fn link(
     lib_dirs: &[PathBuf],
     libs: &[String],
     shared: bool,
+    debug: bool,
 ) -> Result<(), String> {
     let mut c = Command::new(clang());
     c.arg("-o").arg(out);
+    if debug && asan_available() {
+        c.arg("-fsanitize=address");
+    }
     if shared {
         c.arg("-shared");
     }

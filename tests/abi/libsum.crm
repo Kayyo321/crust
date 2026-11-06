@@ -1,0 +1,14 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module libsum;
+
+#include "shapes.h"
+
+[[crust::c_abi]] export int crust_add(int a, int b) {
+    return a + b;
+}
+
+[[crust::c_abi]] export struct s_int2 crust_pair(int a, int b) {
+    return (struct s_int2){ a, b };
+}

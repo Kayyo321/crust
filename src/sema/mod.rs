@@ -178,7 +178,7 @@ impl<'a> sema<'a> {
             return;
         }
         diag::error("CR0133", sp, format!("{what} is unsafe and requires an `unsafe` block"))
-            .label(format!("{what}"))
+            .label(what.to_string())
             .help(
                 "wrap it in `unsafe { ... }` with a `// SAFETY:` comment that says why it is sound",
             );
@@ -425,8 +425,7 @@ impl<'a> sema<'a> {
         match &l.from {
             None => {
                 for n in &l.names {
-                    if n.alias.is_some() {
-                        let a = n.alias.unwrap();
+                    if let Some(a) = n.alias {
                         self.export_alias(n.name, a, n.span);
                     } else {
                         self.export_names.push((n.name, n.span));
@@ -476,19 +475,11 @@ impl<'a> sema<'a> {
     pub fn base_type(&mut self, spec: &decl_spec) -> qual_type {
         let t = match &spec.ty {
             TypeSpecNone => {
-                if spec.quals == 0 && spec.storage.is_none() {
-                    diag::error(
-                        "CR1203",
-                        spec.span,
-                        "a type specifier is required; C23 has no implicit `int`",
-                    );
-                } else {
-                    diag::error(
-                        "CR1203",
-                        spec.span,
-                        "a type specifier is required; C23 has no implicit `int`",
-                    );
-                }
+                diag::error(
+                    "CR1203",
+                    spec.span,
+                    "a type specifier is required; C23 has no implicit `int`",
+                );
                 q(error())
             }
             TypeSpecBuiltin(c) => q(self.builtin_type(c, spec.span)),
@@ -1281,9 +1272,7 @@ impl<'a> sema<'a> {
                 continue;
             }
             let m = module.unwrap();
-            if g.c_abi {
-                g.linkage = LinkageExternal;
-            } else if g.is_func && g.name == SymMain && !g.exported {
+            if g.c_abi || (g.is_func && g.name == SymMain && !g.exported) {
                 g.linkage = LinkageExternal;
             } else if g.exported {
                 g.symbol = mangle(m, g.name);
@@ -1357,8 +1346,8 @@ impl<'a> sema<'a> {
                     BindingGlobal(g) => {
                         let gd = &mut self.prog.globals[g as usize];
                         gd.exported = true;
-                        if gd.is_constexpr && gd.const_value.is_some() {
-                            ExportKindConst { ty: gd.ty, value: gd.const_value.unwrap() }
+                        if let (true, Some(value)) = (gd.is_constexpr, gd.const_value) {
+                            ExportKindConst { ty: gd.ty, value }
                         } else if gd.is_func {
                             ExportKindFunc {
                                 symbol: gd.symbol.clone(),

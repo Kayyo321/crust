@@ -185,11 +185,11 @@ pub fn lex_file(file_id: u32) -> Vec<token> {
             i += 1;
             while i < b.len() {
                 let d = b[i];
-                if (d == b'+' || d == b'-') && matches!(b[i - 1], b'e' | b'E' | b'p' | b'P') {
-                    i += 1;
-                } else if d == b'\'' && b.get(i + 1).is_some_and(|n| n.is_ascii_alphanumeric()) {
-                    i += 1;
-                } else if d.is_ascii_alphanumeric() || d == b'_' || d == b'.' {
+                let sign =
+                    (d == b'+' || d == b'-') && matches!(b[i - 1], b'e' | b'E' | b'p' | b'P');
+                let separator =
+                    d == b'\'' && b.get(i + 1).is_some_and(|n| n.is_ascii_alphanumeric());
+                if sign || separator || d.is_ascii_alphanumeric() || d == b'_' || d == b'.' {
                     i += 1;
                 } else {
                     break;

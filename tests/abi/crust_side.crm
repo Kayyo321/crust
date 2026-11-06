@@ -1,0 +1,78 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module abi_test;
+
+#include <stdio.h>
+#include "shapes.h"
+
+[[crust::c_abi]] export int crust_sum_char3(struct s_char3 s) {
+    return s.a + s.b + s.c;
+}
+
+[[crust::c_abi]] export struct s_int2 crust_swap_int2(struct s_int2 s) {
+    return (struct s_int2){ s.b, s.a };
+}
+
+[[crust::c_abi]] export struct s_big crust_make_big(long x) {
+    return (struct s_big){ x, x + 1, x + 2, x + 3, x + 4 };
+}
+
+[[crust::c_abi]] export double crust_mixed(struct s_mixed m, struct s_mixed2 n) {
+    return m.i + m.d + n.d + n.i;
+}
+
+[[crust::c_abi]] export float crust_sum_float3(struct s_float3 s) {
+    return s.a + s.b + s.c;
+}
+
+[[crust::c_abi]] export long double crust_ld(struct s_ld s, long double y) {
+    return s.x + y;
+}
+
+[[crust::c_abi]] export int crust_add(int a, int b) {
+    return a + b;
+}
+
+int c_sum_char3(struct s_char3 s);
+struct s_int2 c_swap_int2(struct s_int2 s);
+float c_sum_float3(struct s_float3 s);
+struct s_double2 c_scale(struct s_double2 s, double k);
+double c_mixed(struct s_mixed m, struct s_mixed2 n);
+long c_big(struct s_big b);
+struct s_big c_make_big(long x);
+long double c_ld(struct s_ld s, long double y);
+int c_varargs(int n, ...);
+int c_apply(binop f, int a, int b);
+unsigned char c_uchar(unsigned char a, signed char b, short c, bool d);
+double c_many(struct s_double2 a, struct s_double2 b, struct s_double2 c, struct s_double2 d, struct s_double2 e);
+void c_calls_crust(void);
+
+int mul(int a, int b) {
+    return a * b;
+}
+
+int main(void) {
+    unsafe {
+        // SAFETY: every callee is defined in c_side.c with these signatures,
+        // and every format string matches its arguments.
+        printf("crust->c char3 %d\n", c_sum_char3((struct s_char3){ 1, 2, 3 }));
+        let s = c_swap_int2((struct s_int2){ 7, 9 });
+        printf("crust->c swap %d %d\n", s.a, s.b);
+        printf("crust->c float3 %.1f\n", c_sum_float3((struct s_float3){ 1.5f, 2.5f, 3.0f }));
+        let d = c_scale((struct s_double2){ 1.5, 2.0 }, 2.0);
+        printf("crust->c scale %.1f %.1f\n", d.a, d.b);
+        printf("crust->c mixed %.1f\n", c_mixed((struct s_mixed){ 1, 2.5 }, (struct s_mixed2){ 3.5, 4 }));
+        printf("crust->c big %ld\n", c_big((struct s_big){ 1, 2, 3, 4, 5 }));
+        let b = c_make_big(100);
+        printf("crust->c make_big %ld %ld\n", b.a, b.e);
+        printf("crust->c ld %.1Lf\n", c_ld((struct s_ld){ 1.25L }, 2.0L));
+        printf("crust->c varargs %d\n", c_varargs(2, 10, 1.5, 20, 2.5));
+        printf("crust->c fnptr %d\n", c_apply(mul, 6, 7));
+        printf("crust->c small ints %d\n", c_uchar(200, -3, 1000, true));
+        let x = (struct s_double2){ 1.0, 2.0 };
+        printf("crust->c many %.1f\n", c_many(x, x, x, x, x));
+        c_calls_crust();
+    }
+    return 0;
+}

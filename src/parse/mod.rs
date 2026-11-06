@@ -1475,7 +1475,38 @@ impl parser<'_> {
         items
     }
 
+    /// Reports `name name`, which cannot be an expression: the first name
+    /// is a type that is not declared.
+    fn unknown_type_name(&mut self) -> bool {
+        // `name name` cannot be an expression: the first name is a type
+        // that is not declared.
+        let (a, b) = (self.peek().clone(), self.peek_at(1).clone());
+        if a.kind == TokenKindIdent
+            && b.kind == TokenKindIdent
+            && !self.is_typedef(a.text)
+            && !self.is_namespace(&a)
+        {
+            diag::error("CR1203", a.span, format!("unknown type name `{}`", a.text)).help(match a
+                .text
+                .as_str()
+            {
+                "size_t" | "ptrdiff_t" | "max_align_t" => "include <stddef.h>",
+                "int8_t" | "int16_t" | "int32_t" | "int64_t" | "uint8_t" | "uint16_t"
+                | "uint32_t" | "uint64_t" | "intptr_t" | "uintptr_t" => "include <stdint.h>",
+                "FILE" => "include <stdio.h>",
+                _ => "declare the type, include its header, or import it from its module",
+            });
+            self.declare(a.text, true);
+            self.recovering = true;
+            return true;
+        }
+        false
+    }
+
     fn block_item(&mut self) -> Option<BlockItem> {
+        if self.unknown_type_name() {
+            return None;
+        }
         if self.at(SymLet) {
             return Some(BlockItemLet(self.let_decl(vec![])));
         }
@@ -1668,7 +1699,7 @@ impl parser<'_> {
         let start = self.bump().span;
         self.expect(SymLParen);
         self.push_scope();
-        let init = if self.eat(SymSemi) {
+        let init = if self.eat(SymSemi) || self.unknown_type_name() {
             None
         } else if self.at(SymLet) {
             Some(Box::new(BlockItemLet(self.let_decl(vec![]))))

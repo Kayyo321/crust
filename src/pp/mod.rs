@@ -340,11 +340,7 @@ impl preprocessor {
         loop {
             let t = self.pop();
             if t.kind == TokenKindEof {
-                if !is_sentinel(&t) {
-                    self.stack.push(t);
-                } else {
-                    self.stack.push(t);
-                }
+                self.stack.push(t);
                 diag::error(
                     "CR1004",
                     name.span,

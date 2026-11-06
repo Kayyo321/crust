@@ -1,0 +1,16 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module geometry
+format: 1
+hash: f65b4e27d58889e2
+exports:
+  constexpr int MaxPoints = 1024;
+  struct point { double x; double y; };  // size 16, align 8
+  enum Axis : int { AxisX = 0, AxisY = 1 };
+  constexpr enum Axis AxisX = 0;
+  constexpr enum Axis AxisY = 1;
+  typedef struct point point_t;
+  double distance(struct point, struct point);  // symbol _CR.geometry.distance
+  [[crust::c_abi]] double geometry_distance(struct point, struct point);  // symbol geometry_distance
+  ref double pick_x(ref struct point);  // symbol _CR.geometry.pick_x

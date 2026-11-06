@@ -1,0 +1,19 @@
+crust->c char3 6
+crust->c swap 9 7
+crust->c float3 7.0
+crust->c scale 3.0 4.0
+crust->c mixed 11.0
+crust->c big 15
+crust->c make_big 100 104
+crust->c ld 3.2
+crust->c varargs 33
+crust->c fnptr 42
+crust->c small ints 174
+crust->c many 15.0
+c->crust char3 6
+c->crust swap 9 7
+c->crust big 10 14
+c->crust mixed 11.0
+c->crust float3 7.0
+c->crust ld 3.2
+c->crust fnptr 42

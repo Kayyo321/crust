@@ -824,24 +824,23 @@ impl checker<'_> {
                         .note("the local is gone when the function returns");
                     }
                 }
-                OriginRegion(r) => {
+                OriginRegion(r)
                     if self.b.crust
                         && self.ret_region.is_some()
                         && Some(r) != self.ret_region
                         && (is_ref(ret.ty) || is_slice(ret.ty))
-                        && self.once(sp, "CR0623")
-                    {
-                        let want = self
-                            .ret_region
-                            .map(|x| self.regions[x as usize].clone())
-                            .unwrap_or_else(|| "?".into());
-                        diag::error(
+                        && self.once(sp, "CR0623") =>
+                {
+                    let want = self
+                        .ret_region
+                        .map(|x| self.regions[x as usize].clone())
+                        .unwrap_or_else(|| "?".into());
+                    diag::error(
                             "CR0623",
                             sp,
                             format!("lifetime mismatch: returns data with lifetime `{}`, but the result has lifetime `{want}`", self.regions[r as usize]),
                         )
                         .help("give the parameter and the result the same lifetime name");
-                    }
                 }
                 _ => {}
             }

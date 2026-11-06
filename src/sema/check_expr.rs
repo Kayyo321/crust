@@ -865,7 +865,8 @@ impl sema<'_> {
     fn assign(&mut self, op: Option<BinOp>, a: &expr, b: &expr, sp: span) -> texpr {
         let lhs = self.expr(a);
         let rhs = self.expr(b);
-        if lhs.is_error() {
+        let deferred = matches!(lhs.kind, TExprLocal(l) if self.deferred_lets.contains(&l));
+        if lhs.is_error() && !(deferred && op.is_none()) {
             return texpr::error(sp);
         }
         let Some(op) = op else {
@@ -1150,6 +1151,9 @@ impl sema<'_> {
         }
         match base.ty.kind() {
             TypeKindArray(elem, n) if base.lvalue => {
+                if n.is_none() {
+                    self.require_unsafe(sp, "indexing an array of unknown length");
+                }
                 if let (Some(ConstValueInt(v)), Some(n)) = (consteval::eval(&idx), n) {
                     if v < 0 || v >= n as i128 {
                         diag::error(

@@ -125,9 +125,9 @@ impl move_data {
         // Leaves get the bits.
         let n = md.paths.len();
         let mut bit_of = vec![usize::MAX; n];
-        for i in 0..n {
+        for (i, b) in bit_of.iter_mut().enumerate() {
             if md.paths[i].children.is_empty() {
-                bit_of[i] = md.nbits;
+                *b = md.nbits;
                 md.nbits += 1;
             }
         }
@@ -557,15 +557,16 @@ impl reporter<'_> {
         let Some(path) = self.md.exact_path(p) else { return };
         let root = p.root_local().unwrap();
         let ld = &self.b.locals[root as usize];
-        if ld.is_let && !ld.mutable && self.md.maybe_init(st, path) && ld.name.is_some() {
+        let immutable = ld.is_let && !ld.mutable && self.md.maybe_init(st, path);
+        if let (true, Some(name)) = (immutable, ld.name) {
             if self.once(sp, "CR0384") {
                 diag::error(
                     "CR0384",
                     sp,
-                    format!("cannot assign twice to immutable binding `{}`", ld.name.unwrap()),
+                    format!("cannot assign twice to immutable binding `{name}`"),
                 )
                 .secondary(ld.span, "declared here without `mut`")
-                .help(format!("make the binding mutable: `let mut {}`", ld.name.unwrap()));
+                .help(format!("make the binding mutable: `let mut {name}`"));
             }
         }
         // An owned value cannot be built field by field.

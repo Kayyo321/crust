@@ -681,14 +681,14 @@ impl fn_emitter<'_, '_> {
     }
 
     /// Converts an `i1` to the in-memory form of `t`.
-    fn from_i1(&mut self, v: &str, t: type_id) -> String {
+    fn widen_i1(&mut self, v: &str, t: type_id) -> String {
         let lt = llvm_scalar(t);
         let r = self.t();
         self.line(format!("{r} = zext i1 {v} to {lt}"));
         r
     }
 
-    fn to_i1(&mut self, v: &str, t: type_id) -> String {
+    fn as_i1(&mut self, v: &str, t: type_id) -> String {
         let r = self.t();
         if is_float(t) {
             self.line(format!("{r} = fcmp une {} {v}, {}", llvm_scalar(t), float_lit(0.0, t)));
@@ -732,7 +732,7 @@ impl fn_emitter<'_, '_> {
             StatementAssert(c, k) => {
                 let v = self.operand_value(c);
                 let ct = self.operand_ty(c).ty;
-                let b = self.to_i1(&v, ct);
+                let b = self.as_i1(&v, ct);
                 let ok = self.label();
                 let trap = self.label();
                 let (l, col) =
@@ -893,10 +893,10 @@ impl fn_emitter<'_, '_> {
                         r
                     }
                     UnOpNot => {
-                        let b = self.to_i1(&v, at);
+                        let b = self.as_i1(&v, at);
                         let n = self.t();
                         self.line(format!("{n} = xor i1 {b}, true"));
-                        self.from_i1(&n, dt)
+                        self.widen_i1(&n, dt)
                     }
                     _ => v,
                 }
@@ -979,7 +979,7 @@ impl fn_emitter<'_, '_> {
                 }
             };
             self.line(format!("{r} = {pred} {al} {av}, {bv}"));
-            return self.from_i1(&r, dt);
+            return self.widen_i1(&r, dt);
         }
         if is_float(at) {
             let i = match op {
@@ -1167,13 +1167,13 @@ impl fn_emitter<'_, '_> {
         let r = self.t();
         match k {
             CastKindToBool => {
-                let b = self.to_i1(v, from);
-                return self.from_i1(&b, to);
+                let b = self.as_i1(v, from);
+                return self.widen_i1(&b, to);
             }
             CastKindIntToInt => {
                 if matches!(kind(to), TypeKindBool) {
-                    let b = self.to_i1(v, from);
-                    return self.from_i1(&b, to);
+                    let b = self.as_i1(v, from);
+                    return self.widen_i1(&b, to);
                 }
                 return self.int_resize(v, from, to);
             }
@@ -1183,8 +1183,8 @@ impl fn_emitter<'_, '_> {
             }
             CastKindFloatToInt => {
                 if matches!(kind(to), TypeKindBool) {
-                    let b = self.to_i1(v, from);
-                    return self.from_i1(&b, to);
+                    let b = self.as_i1(v, from);
+                    return self.widen_i1(&b, to);
                 }
                 // Saturating conversion: out-of-range values give a defined result.
                 let s = if is_signed(to) { "fptosi" } else { "fptoui" };
@@ -1206,8 +1206,8 @@ impl fn_emitter<'_, '_> {
             }
             CastKindPtrToInt => {
                 if matches!(kind(to), TypeKindBool) {
-                    let b = self.to_i1(v, from);
-                    return self.from_i1(&b, to);
+                    let b = self.as_i1(v, from);
+                    return self.widen_i1(&b, to);
                 }
                 self.line(format!("{r} = ptrtoint ptr {v} to {tl}"));
             }
