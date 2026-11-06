@@ -15,18 +15,19 @@ Crust is C23 plus additions that let the compiler check memory safety. Every val
 - `let` bindings, with immutability by default
 - Lifetimes on borrowed references
 - `unsafe` blocks and functions
+- Modules (`.crm`): `module`, `export`, and `import`, the modern way to organize Crust projects. Source (`.cr`) with headers (`.hr`) stays for old-school code. See [MODULES.md](MODULES.md).
 - Crust attributes, written as C23 vendor attributes: `[[crust::...]]`
 
 C semantics still apply everywhere, with one difference. In checked code, the Crust rules add constraints. C code that is valid but unsafe is rejected unless the unsafe part is written inside `unsafe`.
 
 ## 2. Modes
 
-File extension selects the default mode. Flags can override it.
+File extension selects the default mode. Flags can override it. Crust source is `.cr`, Crust headers are `.hr`, and Crust modules are `.crm`. The reserved words `let`, `mut`, `unsafe`, `module`, `export`, and `import` apply in all three. See [MODULES.md](MODULES.md), section 1.
 
 | Mode | Default for | Syntax | Safety checks |
 |---|---|---|---|
-| Crust | `.cr` | C23 + Crust additions | On |
-| C | `.c`, `.h` | C23 only; `let`, `mut`, `unsafe`, `import` are identifiers | On |
+| Crust | `.cr`, `.hr`, `.crm` | C23 + Crust additions. `.crm` files are modules ([MODULES.md](MODULES.md)). | On |
+| C | `.c`, `.h` | C23 only; `let`, `mut`, `unsafe`, `module`, `export`, `import` are identifiers | On |
 | Unchecked | nothing; `--unchecked` only | either | Off. Migration aid. Emits a warning on every use. |
 
 `--std=crust` and `--std=c23` override the syntax mode. Checks stay on unless `--unchecked` is given. See [CLI.md](CLI.md).
@@ -88,7 +89,7 @@ let view;
 // use(view);                      // error: `view` outlives `owner`
 ```
 
-The surface syntax for borrows is **(open, D-018)**. In C's address-of, `&x` gives a raw pointer. In `.cr` checked code it could give a borrow. Raw pointers in checked code are covered in [MEMORY_SAFETY.md](MEMORY_SAFETY.md#5-raw-pointers).
+The surface syntax for borrows is **(open, D-018)**. In C's address-of, `&x` gives a raw pointer. In Crust code (`.cr`, `.crm`) it could give a borrow. Raw pointers in checked code are covered in [MEMORY_SAFETY.md](MEMORY_SAFETY.md#5-raw-pointers).
 
 ## 6. Arrays, slices, and bounds
 
@@ -139,7 +140,7 @@ A declaration can assert that a C function is safe with `[[crust::safe]]`. The a
 
 ## 10. Attributes and extension points
 
-Crust-specific attributes use the C23 vendor-attribute form `[[crust::name]]`. Attributes are preferred over keywords because they cannot break C code. The planned attributes are `drop`, `safe`, and `export`. Each one is defined in this document before it is used.
+Crust-specific attributes use the C23 vendor-attribute form `[[crust::name]]`. Attributes are preferred over keywords because they cannot break C code. The planned attributes are `drop`, `safe`, and `c_abi` (see [MODULES.md](MODULES.md), section 10). Each one is defined in this document before it is used.
 
 ## 11. Undefined behavior
 
@@ -150,4 +151,4 @@ In checked code, C undefined behavior that can corrupt memory is turned into a t
 - Generics. Deferred; see D-026.
 - Closures, async, and exceptions. Not planned.
 - Threads and `Send`/`Sync`. Planned after M7.
-- Module system. The import syntax is **(open, D-020)**.
+- Default exports and dynamic imports. See [MODULES.md](MODULES.md), section 11.

@@ -21,7 +21,7 @@ For **checked code**, Crust guarantees that a running program never:
 | G-UNINIT | Reads a value that was never initialized | Definite-initialization analysis |
 | G-ALIAS | Mutates a value while a shared borrow of it is live | Borrow checking |
 
-Checked code is every `.c` or `.cr` function body outside `unsafe`, compiled without `--unchecked`.
+Checked code is every `.c`, `.cr`, or `.crm` function body outside `unsafe`, compiled without `--unchecked`.
 
 Planned, not in the first guarantee set: G-NULL (dereference of a possibly null checked pointer), and G-RACE (data races between threads, after M7).
 
@@ -31,6 +31,7 @@ The guarantee holds only if the **trusted base** holds. The items below are outs
 
 - **Unsafe code.** `unsafe` blocks are the programmer's proof obligations. Each one carries a `SAFETY:` comment.
 - **C code linked in.** Crust cannot check the body of a C function. Calling it is an `unsafe` operation unless declared `[[crust::safe]]`.
+- **Module contracts.** A safe export must uphold the invariants its module relies on. The checker cannot verify that. See [MODULES.md](MODULES.md), section 9.
 - **Unchecked mode.** `--unchecked` turns checks off for a translation unit.
 - **The compiler and LLVM.** A miscompilation of checked code is a soundness bug. It is not an exception to the guarantee.
 - **Hardware, OS, libc, and the linker.**

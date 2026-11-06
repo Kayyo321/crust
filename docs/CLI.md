@@ -19,16 +19,16 @@ Two binaries:
 crust [options] <input>...
 ```
 
-Input files are `.c`, `.h`, and `.cr`. The mode is chosen by extension unless `--std` says otherwise (see LANGUAGE.md, section 2).
+Input files are `.c` and `.h` (C), `.cr` (Crust source), `.hr` (Crust headers, included rather than compiled alone), and `.crm` (Crust modules, see MODULES.md). The mode is chosen by extension unless `--std` says otherwise (see LANGUAGE.md, section 2).
 
 ### Output
 
 | Flag | Meaning |
 |---|---|
 | `-o <path>` | Output path |
-| `--emit=<kind>` | `exe` (default), `obj`, `asm`, `llvm-ir`, `staticlib`, `sharedlib`, `header` |
+| `--emit=<kind>` | `exe` (default), `obj`, `asm`, `llvm-ir`, `staticlib`, `sharedlib`, `header`, `interface` |
 | `-c` | Shorthand for `--emit=obj` |
-| `--emit-header=<path>` | Write a C header for exported items, alongside another output |
+| `--emit-header=<path>` | Write a C header for `[[crust::c_abi]]` exports, alongside another output |
 
 ### Language and safety
 
@@ -37,6 +37,13 @@ Input files are `.c`, `.h`, and `.cr`. The mode is chosen by extension unless `-
 | `--std=c23` | C syntax. `let`, `mut`, `unsafe`, `import` are identifiers. Checks stay on. |
 | `--std=crust` | Crust syntax, for any file extension |
 | `--unchecked` | Turn off safety checks for every input. Warns on each use. For migration only. |
+
+### Modules
+
+| Flag | Meaning |
+|---|---|
+| `--extern <package>=<dir>` | Directory holding the `.crmi` interfaces of a dependency. Imports written `"<package>/name"` are found there. |
+| `--print-interface <file>` | Print a `.crmi` file in readable form |
 
 ### Code generation
 
@@ -89,7 +96,7 @@ crepe <command> [options]
 | `crepe init` | Create a package in the current directory |
 | `crepe add <name>[@<version>]` | Add a dependency. `--path <dir>` and `--git <url> [--rev <rev>]` are also accepted. |
 | `crepe remove <name>` | Remove a dependency |
-| `crepe build [--release]` | Build the package and its dependencies |
+| `crepe build [--release] [--target <name>]` | Build the package and its dependencies, or only the target named in `crepe.toml` |
 | `crepe run [-- <args>]` | Build and run the binary |
 | `crepe test` | Build and run tests |
 | `crepe check` | Type- and safety-check without generating code |
@@ -115,6 +122,21 @@ local_util = { path = "../local_util" }
 
 Dependencies use semantic versioning. Path and git dependencies work without a registry.
 
+### Package layout
+
+```
+src/
+  lib.crm           library root; declares `module <package>;`
+  main.crm          binary root; declares `module <package>;`
+  net/http.crm      any other module; declares `module net.http;`
+  legacy/parse.cr   old-school source, paired with the header below
+  legacy/parse.hr   Crust header included by parse.cr
+```
+
+### Build targets
+
+Declared in `crepe.toml` as `[[bin]]` and `[[lib]]` tables. Each names a `root` (a `.crm` module), or lists `sources` (old-school `.cr` files) with `include` directories for `.hr` headers. Modules are shared between targets. See [MODULES.md](MODULES.md), section 7.
+
 ### Lockfile: `crepe.lock`
 
 Written by `crepe`, never edited by hand. Records the exact version or commit of each dependency. Commit it for binaries. Its format has no comments, so it is exempt from the file header rule (see CODE_STYLE.md).
@@ -138,5 +160,5 @@ build/
 ## 4. Open questions
 
 - Manifest name and whether it is `crepe.toml` (D-025).
-- How source files import another package (D-020).
+- Workspaces: several packages in one repository, sharing one lockfile. Not designed yet.
 - Whether `crepe` supports editions, so the language can change without breaking old packages. Not decided.

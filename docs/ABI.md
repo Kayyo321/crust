@@ -6,7 +6,7 @@
 
 # C ABI compatibility
 
-Status: draft. Goal G3: full C ABI compatibility. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) (D-003).
+Status: draft. Goal G3: full C ABI compatibility. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) (D-003, amended by D-034), [MODULES.md](MODULES.md).
 
 ## 1. The rule
 
@@ -43,15 +43,15 @@ Some Crust types have no C equivalent: slices, borrows, and owned values. They a
 
 Rules:
 
-1. A function with **external linkage** may use only C-compatible types in its signature. Using a Crust-only type is a compile error, with a fix hint that names the C-compatible form.
-2. A function with internal linkage may use any Crust type.
+1. An export marked `[[crust::c_abi]]` may use only C-compatible types in its signature. Using a Crust-only type is a compile error, with a fix hint that names the C-compatible form.
+2. Other exports and private declarations may use any Crust type. They use the Crust ABI, which is mangled by module name (see [MODULES.md](MODULES.md), section 10).
 3. Passing a borrow to C erases its lifetime. The compiler does not check what the C code does with it. Any such pass is inside `unsafe` unless the callee is declared `[[crust::safe]]`.
 
 ## 4. Declaring and exporting
 
 - C headers declare external C functions. Calling them is `unsafe` unless declared `[[crust::safe]]` (see LANGUAGE.md, section 9).
-- A Crust function with external linkage is exported under its own name. No mangling.
-- `--emit=header` writes a C23 header for every exported C-compatible item. C programs include that header. The header contains no Crust syntax.
+- A `[[crust::c_abi]] export` function is exported under its own name, with no mangling. Other exports are mangled by module name.
+- `--emit=header` writes a C23 header for every `[[crust::c_abi]]` export. C programs include that header. The header contains no Crust syntax.
 
 ## 5. Verification
 

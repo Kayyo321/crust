@@ -17,6 +17,7 @@ Crust's job is to make memory errors impossible in checked code, so the bugs tha
 - **Soundness bugs.** The checker accepts checked code that leaks, double-frees, uses freed memory, reads uninitialized memory, overflows a buffer, or mutates through a live shared borrow.
 - **Miscompilation.** The compiler produces code that violates a guarantee, even though the source was accepted.
 - **ABI bugs** that corrupt memory across the C boundary.
+- **Module-boundary bugs.** A safe export that lets callers break an invariant the module relies on. See [MODULES.md](MODULES.md), section 9.
 - **Compiler crashes** on untrusted input, when the crash can be turned into memory corruption.
 
 Ordinary bugs (a wrong diagnostic message, a missing feature) go in a public issue.

@@ -11,10 +11,11 @@ Status: draft. The repo layout is a plan. Create directories in M0, not before. 
 ## 1. Pipeline
 
 ```
-source (.c .h .cr)
+source (.c .h .cr .hr .crm)
   │  preprocess         C23 #include, #define, #if, #embed, __has_include
   ▼
 tokens ──► parse ──► AST
+                      │  module graph: resolve imports against .crmi files and this build's modules
                       │  name resolution, type checking, const checking
                       ▼
                  CrIR  (control-flow graph; moves, borrows, drops explicit)
@@ -37,15 +38,17 @@ Stages after the AST never print. They return diagnostics to the driver.
 
 | Stage | Input | Output | Notes |
 |---|---|---|---|
-| Preprocess | files, `-D`, `-I` | token stream | C23 preprocessor. Keep it standard. |
+| Preprocess | files, `-D`, `-I` | token stream | C23 preprocessor. Keep it standard. `#include` of a `.hr` header inserts Crust text, which is parsed in Crust mode. |
 | Lex | tokens | tokens with spans | Lifetimes `'a` are lexed as their own token. The lexer tells them apart from `'a'` by checking for a closing quote. |
-| Parse | tokens | AST | Accepts C23 and, in `.cr` mode, Crust additions. |
+| Parse | tokens | AST | Accepts C23 in `.c` and `.h`. Accepts Crust in `.cr`, `.hr`, and `.crm`. The `module` and `export` forms are valid only in `.crm`. |
+| Module graph | ASTs | module graph, resolved imports | Module names unique, dependencies listed, no cycles. Loads `.crmi` for imported modules. See MODULES.md. |
 | Sema | AST | typed AST | Name resolution, types, const expressions, attribute validation, exhaustive `switch`. |
 | Lower to CrIR | typed AST | CrIR | Makes moves, borrows, drops, and storage lifetimes explicit. |
 | Safety analyses | CrIR | proofs or diagnostics | See MEMORY_SAFETY.md, section 3. |
 | Lower to LLVM | CrIR | LLVM IR | Carries proof obligations as metadata or as inserted checks. |
 | LLVM passes | LLVM IR | LLVM IR | Bounds traps, invariant verification, debug sanitizers. |
 | Codegen | LLVM IR | object | Target from `--target`. Optimization level from `-O`. |
+| Emit interface | typed AST | `.crmi` file | Written per module after sema. Its hash changes only when exports change. |
 | Link | objects | exe, `.a`, `.so`, headers | System linker (`cc`, `ld`, or `lld`). Headers come from `--emit=header`. |
 
 ## 3. Diagnostics
@@ -69,6 +72,7 @@ src/
   safety/     move, init, borrow, lifetime, drop, and bounds analyses
   codegen/    CrIR to LLVM IR, LLVM pass pipeline, object emission
   abi/        target layouts and calling conventions
+  modules/    module graph, import resolution, .crmi reading and writing
 crepe/        crepe entry point and dependency resolution (separate binary)
 lib/          minimal runtime and standard library in Crust
 tests/        compile_fail/, run_pass/, soundness/, conformance/, abi/
@@ -95,10 +99,10 @@ Build output goes to `build/`, which is git-ignored. `crepe` puts its artifacts 
 1. Reads the manifest (`crepe.toml`, D-025).
 2. Resolves dependencies to exact versions, and records them in `crepe.lock`.
 3. Fetches sources (path, git, and later a registry) into a cache.
-4. Calls `crust` for each package in dependency order, passing include and link paths.
+4. Calls `crust` for each package in dependency order, passing include paths, link paths, and `--extern` directories holding the `.crmi` interfaces of its dependencies.
 5. Writes the final artifacts, plus the generated headers that C consumers need.
 
-Crust does not know about packages. It knows about files, include paths, and link paths. Keeping that boundary means `crust` works without `crepe`.
+Crust knows about modules, interface files, include paths, and link paths. It does not know about packages. `crepe` maps packages onto `--extern` directories. Keeping that boundary means `crust` works without `crepe`.
 
 ## 8. External dependencies
 
@@ -107,6 +111,6 @@ Crust does not know about packages. It knows about files, include paths, and lin
 - A C library for the target (libc)
 - For tests: an existing C compiler, to compare ABI behavior against
 
-## 9. What we don't build yet
+## 9. Incremental builds
 
-No incremental compilation, no compile server, and no distributed builds in v1. Revisit when compile times are a measured problem, not a guessed one.
+The one incremental build in v1 is at module granularity. An importer rebuilds only when an imported `.crmi` changes (see [MODULES.md](MODULES.md), section 6). `.cr` sources have no interface file, so a change to one rebuilds every target that compiles it. There is no compile server and no distributed build in v1. Revisit those when compile times are a measured problem, not a guessed one.

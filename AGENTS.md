@@ -10,7 +10,7 @@ Instructions for AI coding agents working in this repository. Human contributors
 
 ## What this project is
 
-Crust is a C compiler for C23 with a checked mode that enforces Rust's memory-safety rules: ownership, borrowing, lifetimes, definite initialization, and drop checking. It emits code through LLVM. It ships two CLIs: `crust` (the compiler) and `crepe` (the package manager). Read [PROJECT.md](PROJECT.md) first.
+Crust is a C compiler for C23 with a checked mode that enforces Rust's memory-safety rules: ownership, borrowing, lifetimes, definite initialization, and drop checking. It emits code through LLVM. Crust projects are organized in `.crm` modules. Old-school `.cr` source with `.hr` headers is still supported. It ships two CLIs: `crust` (the compiler) and `crepe` (the package manager). Read [PROJECT.md](PROJECT.md) first.
 
 ## Current state
 
@@ -20,6 +20,7 @@ Design documents only. There is no build system yet. When one lands (milestone M
 
 - [PROJECT.md](PROJECT.md): goals, non-goals, milestones, glossary
 - [docs/LANGUAGE.md](docs/LANGUAGE.md): what the Crust language is
+- [docs/MODULES.md](docs/MODULES.md): `.crm` modules, imports, exports, and interface files
 - [docs/MEMORY_SAFETY.md](docs/MEMORY_SAFETY.md): the guarantees, their limits, and how they are enforced
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): compiler pipeline and repo layout
 - [docs/ABI.md](docs/ABI.md): C ABI rules
@@ -39,6 +40,7 @@ Design documents only. There is no build system yet. When one lands (milestone M
 7. **Add the tests that docs/TESTING.md requires** for your change. Do not lower a coverage floor.
 8. **Justify new dependencies** in the PR description.
 9. **Keep commits to one concern.**
+10. **New Crust code uses modules.** Put new project code in `.crm` modules and connect it with `import` and `export`. Use `.cr` source with `.hr` headers only where the surrounding code already works that way, or the task says so. Never `#include` a `.crm` file. C headers are for C code and C libraries.
 
 ## Git
 

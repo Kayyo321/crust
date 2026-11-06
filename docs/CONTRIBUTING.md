@@ -16,7 +16,7 @@ Read, in this order:
 2. [CODE_STYLE.md](CODE_STYLE.md): the file header and naming rules, which are checked
 3. [DECISIONS.md](DECISIONS.md): what is decided, and what is still open
 
-If your change touches the language, the ABI, or a safety rule, also read [LANGUAGE.md](LANGUAGE.md), [MEMORY_SAFETY.md](MEMORY_SAFETY.md), and [ABI.md](ABI.md).
+If your change touches the language, the ABI, or a safety rule, also read [LANGUAGE.md](LANGUAGE.md), [MEMORY_SAFETY.md](MEMORY_SAFETY.md), and [ABI.md](ABI.md). If it touches modules, imports, exports, headers, or interface files, read [MODULES.md](MODULES.md).
 
 ## Setup
 
@@ -28,7 +28,7 @@ Not yet available. Setup steps arrive with milestone M0 and are written here the
 |---|---|
 | Bug fix, refactor, docs, tests | Pull request. No discussion needed first. |
 | New diagnostic or error message | Pull request. |
-| New language syntax, keyword, attribute, or CLI flag | A `Proposed` entry in [DECISIONS.md](DECISIONS.md), then discussion, then `Accepted` before code. |
+| New language syntax, keyword, attribute, module rule, or CLI flag | A `Proposed` entry in [DECISIONS.md](DECISIONS.md), then discussion, then `Accepted` before code. |
 | Change to a safety rule | A DECISIONS.md entry with the reason. A rule is never weakened silently. |
 | ABI change | A DECISIONS.md entry, and a note in the PR. |
 | Security or soundness bug | Report privately first. See [SECURITY.md](SECURITY.md). |

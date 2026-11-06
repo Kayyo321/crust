@@ -13,7 +13,7 @@
 - [ ] Bug fix
 - [ ] Refactor, no behavior change
 - [ ] Docs only
-- [ ] New language rule, syntax, keyword, attribute, or CLI flag (DECISIONS.md entry: <!-- link -->)
+- [ ] New language rule, syntax, keyword, attribute, module rule, or CLI flag (DECISIONS.md entry: <!-- link -->)
 - [ ] ABI-visible change (DECISIONS.md entry: <!-- link -->)
 - [ ] Soundness-affecting (soundness corpus case added: <!-- link -->)
 

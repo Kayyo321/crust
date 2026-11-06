@@ -15,6 +15,7 @@ C is the lingua franca of systems software, and it is unsafe by construction. Ru
 ## Problem
 
 - Existing C code leaks memory, frees memory twice, reads freed memory, and overflows buffers. Existing tools only find some of these, and only when they run.
+- Hand-written headers duplicate every declaration. The copies drift apart, every file re-parses them, and macros leak between them. Crust projects use modules, which generate their interfaces instead.
 - Rewriting C in Rust is expensive, and it breaks the C ABI and existing build systems.
 - Bolting safety onto C with a separate language or a heavy runtime loses most of C's reach.
 
@@ -28,6 +29,7 @@ C is the lingua franca of systems software, and it is unsafe by construction. Ru
 | G4 | **Low friction.** `let`, type inference, and clear diagnostics. Annotations only where the checker needs them. | Diagnostics carry a code, a span, and a fix hint |
 | G5 | **Dependencies like cargo.** Resolve, fetch, and build libraries through `crepe`. | `crepe build` works on a multi-package project (M7) |
 | G6 | **Native performance.** Use LLVM. Checks cost nothing where the compiler can prove them away. | Benchmark overhead tracked from M5 |
+| G7 | **Modules for projects.** Multi-file Crust projects use `.crm` modules, which generate their interfaces and share builds across targets. `.cr` with `.hr` headers stays supported for old-school code. | Modules are the default in examples and templates. Importers rebuild only when an interface changes (M6). |
 
 ## Non-goals
 
@@ -44,6 +46,7 @@ C is the lingua franca of systems software, and it is unsafe by construction. Ru
 3. **State guarantees precisely.** Write down what is guaranteed and what is not. Don't overclaim.
 4. **Fast feedback.** Tests stay fast. Coverage is a floor, not a score to chase.
 5. **Docs are the spec.** Code follows the docs. Changed behavior changes the docs in the same change.
+6. **Modules for projects.** The compiler generates a module's interface from its source, so nobody maintains a second copy of a declaration. Old-school `.cr` and `.hr` pairs stay supported, but new projects use modules. See [docs/MODULES.md](docs/MODULES.md).
 
 ## What we take from Rust
 
@@ -61,7 +64,7 @@ The full mapping, with milestones, is in [docs/MEMORY_SAFETY.md](docs/MEMORY_SAF
 
 ## Toolchain at a glance
 
-- **`crust`**: the compiler. Parses C23 and Crust, checks memory safety, lowers to LLVM, emits objects, executables, static and shared libraries, and C headers. See [docs/CLI.md](docs/CLI.md).
+- **`crust`**: the compiler. Parses C23, Crust source (`.cr`), Crust headers (`.hr`), and Crust modules (`.crm`), checks memory safety, lowers to LLVM, emits objects, executables, static and shared libraries, `.crmi` module interfaces, and C headers. See [docs/CLI.md](docs/CLI.md) and [docs/MODULES.md](docs/MODULES.md).
 - **`crepe`**: the package manager. Manages dependencies, lockfiles, and builds, and calls `crust`. See [docs/CLI.md](docs/CLI.md).
 - **LLVM** for code generation and optimization. The system linker for final linking.
 
@@ -74,11 +77,11 @@ Each milestone ends with an exit criterion, not a date.
 | M0 Foundations | Repo layout, build system, CI, header and naming checks, a program that compiles through LLVM | CI green on an empty program that prints "hello" |
 | M1 C23 front end | Preprocessor, lexer, parser, and semantic analysis for C23 | Parses the C23 conformance suite with no spurious errors |
 | M2 C codegen | C23 to LLVM IR; C-compat ABI for scalars, structs, and pointers | Run-pass tests match clang output for the supported subset |
-| M3 Crust surface | `let`, `mut`, `unsafe`, lifetime syntax, `[[crust::...]]` attributes, diagnostics with codes | Compile-fail tests for each syntax rule |
+| M3 Crust surface | `let`, `mut`, `unsafe`, lifetime syntax, `[[crust::...]]` attributes, `.cr` and `.hr` source/header pairs, `.crm` modules (`module`, `import`, `export`) within one build, diagnostics with codes | Compile-fail tests for each syntax rule; a three-module program builds and runs |
 | M4 Safety core | Crust IR; move and init analysis; borrow and lifetime checking; drop elaboration | Soundness corpus: every must-reject case rejected, every must-run case runs leak-free |
 | M5 Bounds and slices | Slice types, bounds checks, C-compatible lowering of Crust types | Benchmark overhead measured and within the target set at M5 |
-| M6 Libraries | Static and shared library output; generated C headers | A C program links against a Crust library and passes the ABI matrix |
-| M7 crepe | Manifest, lockfile, path and git dependencies, build through `crust` | Multi-package project builds from a clean checkout |
+| M6 Libraries | Static and shared library output; `.crmi` interface files with the rebuild rule; generated C headers for C consumers | A C program links against a Crust library and passes the ABI matrix; editing a function body does not rebuild importers |
+| M7 crepe | Manifest, lockfile, path and git dependencies, build targets, build through `crust` | A multi-package project with several build targets builds from a clean checkout |
 | M8 Later | Registry, threads (`Send`/`Sync`), generics, self-hosting exploration | Scoped when M7 is complete |
 
 ## Success metrics
@@ -89,7 +92,7 @@ Each milestone ends with an exit criterion, not a date.
 
 ## Glossary
 
-- **Checked code:** code the Crust checker analyzes. This is all code in `.c` and `.cr` files outside `unsafe` blocks, unless compiled with `--unchecked`.
+- **Checked code:** code the Crust checker analyzes. This is all code in `.c`, `.cr`, and `.crm` files outside `unsafe` blocks, unless compiled with `--unchecked`.
 - **Unsafe code:** code inside an `unsafe` block or `unsafe` function, where the programmer takes on the proof obligations.
 - **Owned value:** a value with a single owner that is released when the owner goes out of scope.
 - **Borrow:** a reference that does not own its target. Shared borrows are read-only. Unique borrows allow mutation.
@@ -98,6 +101,9 @@ Each milestone ends with an exit criterion, not a date.
 - **Trap:** a deliberate, immediate program abort with a diagnostic when a runtime check fails.
 - **CrIR:** Crust IR, the mid-level representation where the safety analyses run. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Soundness bug:** the checker accepts a program that violates a guarantee in checked code.
+- **Module:** one `.crm` file, declared with `module`. Its exports are its public surface. See [docs/MODULES.md](docs/MODULES.md).
+- **Interface file (`.crmi`):** the compiler-generated description of a module's exports. Importers read it instead of the source.
+- **Source/header pair:** a `.cr` file and the `.hr` header it includes. The old-school form, still supported.
 
 ## Open questions
 

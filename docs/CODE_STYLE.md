@@ -12,7 +12,7 @@ Status: binding for all code and docs in this repo. The naming and header rules 
 
 Every file starts with the signature, exactly as below. Do not change the text, the line breaks, or the spacing.
 
-**C, C headers, Crust (`.c`, `.h`, `.cr`), and other C-family source:**
+**C and Crust source (`.c`, `.h`, `.cr`, `.hr`, `.crm`), and other C-family source:**
 
 ```c
 /**
@@ -57,6 +57,8 @@ The house rule: **`snake_case` everywhere, except constants and enums, which are
 | Crust attributes | snake_case | `[[crust::drop]]` |
 | Test functions | snake_case, describing the expected result | `rejects_double_free` |
 | Code file and directory names | snake_case | `borrow_check.c` |
+| Module names | dotted; each segment snake_case | `net.http` |
+| Module file paths | match the module name, dots become slashes | `src/net/http.crm` |
 
 Rules that follow from the house rule:
 
@@ -76,7 +78,7 @@ Rules that follow from the house rule:
 - One statement per line. One declaration per line.
 - The formatter is the source of truth. Don't hand-format against it.
   - C and headers: `clang-format` with the checked-in `.clang-format` (added in M0).
-  - `.cr` files: formatter TBD. Planned as `crust fmt`. Until then, use `clang-format` only if it produces the same result on your file.
+  - `.cr`, `.hr`, and `.crm` files: formatter TBD. Planned as `crust fmt`. Until then, use `clang-format` only if it produces the same result on your file.
   - Rust implementation code, if chosen (D-019): `rustfmt` with the checked-in `rustfmt.toml`.
 
 ## 4. Comments
@@ -98,7 +100,7 @@ Rules that follow from the house rule:
 
 - A function that does not fit on one screen (about 60 lines) should be split. This is a guideline. A reviewer can ask for the split.
 - A file should have one main concern. If a file grows past about 1000 lines, consider splitting it.
-- Public API goes in a header or a `pub` section. Internals stay file-local (`static` in C).
+- Public API is marked `export` in a `.crm` module, or declared in a `.hr` header for a source/header pair. Internals stay private (`static` in C). A `.crm` file is one module, so it has one main concern by definition.
 
 ## 7. Language-specific rules
 
@@ -119,11 +121,13 @@ The house naming rule conflicts with rustc's default lints. The crate root must 
 
 Also required: `#![deny(unsafe_op_in_unsafe_fn)]`, and the Clippy lint `undocumented_unsafe_blocks` set to `deny`.
 
-### Crust (`.cr` files, tests, and `lib/`)
+### Crust (`.cr`, `.hr`, `.crm` files, tests, and `lib/`)
 
 - Prefer `let` without a type annotation when the type is obvious from the initializer.
 - Write lifetime annotations only where elision fails.
 - Attributes are lowercase: `[[crust::drop]]`, not `[[crust::Drop]]`.
+- Order inside a `.crm` module: `module`, then `#include`, then `import`, then declarations. In a `.cr` file, `#include` the `.hr` header before any code. Never `#include` a `.crm` file. Import it.
+- Export only what callers need. Private is the default. See [MODULES.md](MODULES.md).
 - Use `mut` only where mutation is needed. Immutability is the default.
 
 ## 8. Enforcement

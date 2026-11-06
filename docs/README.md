@@ -11,8 +11,9 @@ Start with [PROJECT.md](../PROJECT.md) for the goals, then read what applies to 
 ## If you are reading the language
 
 1. [LANGUAGE.md](LANGUAGE.md): what Crust is, its modes, and its additions to C23
-2. [MEMORY_SAFETY.md](MEMORY_SAFETY.md): the guarantees, their limits, and how they are enforced
-3. [ABI.md](ABI.md): how Crust and C interoperate
+2. [MODULES.md](MODULES.md): modules, imports, and exports, the modern way to organize Crust projects, and how they coexist with `.cr` and `.hr` pairs
+3. [MEMORY_SAFETY.md](MEMORY_SAFETY.md): the guarantees, their limits, and how they are enforced
+4. [ABI.md](ABI.md): how Crust and C interoperate
 
 ## If you are building the compiler or tools
 

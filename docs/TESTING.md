@@ -19,6 +19,7 @@ Not yet available. There is no build system until milestone M0. When M0 lands, t
 | Unit | next to the code | One pass or function | Every PR |
 | Compile-fail | `tests/compile_fail/` | Each rule rejects its bad programs with the right code | Every PR |
 | Run-pass | `tests/run_pass/` | Programs compile and run with expected stdout and exit code, under ASan and LSan | Every PR |
+| Module and pair | `tests/modules/`, `tests/pairs/` | Multi-module programs build and run. Import and export errors reject with the right code. `.cr` and `.hr` pairs compile, and mismatched signatures reject. `.crmi` golden files match. | Every PR |
 | Soundness corpus | `tests/soundness/` | Must-reject and must-accept cases, each tagged with a guarantee ID (G-UAF, G-DF, G-LEAK, G-OOB, G-UNINIT, G-ALIAS) | Every PR |
 | C conformance | `tests/conformance/` | A C23 conformance suite in C mode. Pass rate may only go up. | Nightly |
 | ABI matrix | `tests/abi/` | Layout and call tests in both directions, per target | Nightly and release |
@@ -45,6 +46,10 @@ This table is the whole policy. If a change is not listed, ask in the PR.
 |---|---|
 | New language rule | A compile-fail test that the rule rejects, and a run-pass test of the valid variant that it accepts |
 | New diagnostic code | A compile-fail test that triggers it, matched by code |
+| New module rule (import, export, naming, cycles) | A compile-fail test that the rule rejects, and a multi-module run-pass test that it accepts |
+| Source/header pair rule | A compile-fail test with a mismatched signature, and a run-pass pair that matches |
+| Interface format or hash change | A golden `.crmi` test, updated in the same PR |
+| Function body change only | A test that the interface hash is unchanged and importers are not rebuilt |
 | Bug fix, not a soundness bug | A regression test that fails before the fix and passes after |
 | Soundness fix | A soundness corpus case, added before the fix. It fails on `main`. |
 | New ABI-visible type or function | An ABI layout test, and a call test |
