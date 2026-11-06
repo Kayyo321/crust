@@ -88,11 +88,41 @@ impl sema<'_> {
         intern(TypeKindRecord(id))
     }
 
+    /// The module that owns a declaration: only the module file itself, not
+    /// the C headers it includes.
+    pub fn owner_module(&self, sp: span) -> Option<sym> {
+        self.module.filter(|_| sp.file == self.main_file)
+    }
+
     fn new_incomplete_record(&mut self, is_union: bool, tag: Option<sym>, sp: span) -> u32 {
+        let module = self.owner_module(sp);
+        if self.at_file_scope() {
+            if let Some(t) = tag {
+                if let Some(id) = crate::modules::interface::lookup_record(module, t) {
+                    if module.is_none() && record(id).is_union == is_union {
+                        return id;
+                    }
+                }
+            }
+        }
+        let id = self.new_record_raw(is_union, tag, sp, module);
+        if let (Some(t), true) = (tag, self.at_file_scope()) {
+            crate::modules::interface::register_record(module, t, id);
+        }
+        id
+    }
+
+    fn new_record_raw(
+        &mut self,
+        is_union: bool,
+        tag: Option<sym>,
+        sp: span,
+        module: Option<sym>,
+    ) -> u32 {
         new_record(record_def {
             is_union,
             tag,
-            module: self.module,
+            module,
             complete: false,
             fields: Vec::new(),
             size: 0,
@@ -285,7 +315,7 @@ impl sema<'_> {
                 }
                 let id = new_enum(enum_def {
                     tag: Some(tag),
-                    module: self.module,
+                    module: self.owner_module(sp),
                     complete: false,
                     underlying: fixed.unwrap_or(IntKindUInt),
                     fixed: fixed.is_some(),
@@ -307,7 +337,7 @@ impl sema<'_> {
             None => {
                 let id = new_enum(enum_def {
                     tag: e.tag.map(|t| t.0),
-                    module: self.module,
+                    module: self.owner_module(e.span),
                     complete: false,
                     underlying: fixed.unwrap_or(IntKindUInt),
                     fixed: fixed.is_some(),
@@ -316,6 +346,9 @@ impl sema<'_> {
                 });
                 if let Some((t, _)) = e.tag {
                     self.scopes.last_mut().unwrap().tags.insert(t, TagEnum(id));
+                    if self.at_file_scope() {
+                        crate::modules::interface::register_enum(self.owner_module(e.span), t, id);
+                    }
                 }
                 id
             }
