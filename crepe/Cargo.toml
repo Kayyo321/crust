@@ -1,0 +1,16 @@
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+
+[package]
+name = "crepe"
+description = "The Crust package manager"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "crepe"
+path = "src/main.rs"
+
+[lints]
+workspace = true
