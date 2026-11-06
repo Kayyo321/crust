@@ -467,6 +467,9 @@ impl parser<'_> {
         }
         let mut attrs = attrs;
         attrs.extend(self.attribute_specifiers());
+        if exported.is_some() && self.unknown_type_name() {
+            return None;
+        }
         if self.at(SymLet) {
             let l = self.let_decl(attrs);
             let sp = l.span;

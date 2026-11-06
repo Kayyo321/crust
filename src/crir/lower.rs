@@ -467,10 +467,24 @@ impl builder<'_> {
             _ => {
                 if is_void(e.ty.ty) {
                     self.void_expr(e);
-                } else if e.lvalue {
-                    let _ = self.place(e);
                 } else {
-                    let _ = self.operand(e);
+                    // The value is discarded, but the read still happens: it
+                    // must be in CrIR so the analyses see the use.
+                    let op = if e.lvalue {
+                        let p = self.place(e);
+                        if is_owned(e.ty.ty) { return } else { OperandCopy(p) }
+                    } else {
+                        self.operand(e)
+                    };
+                    if let Some(p) = op.place() {
+                        if !matches!(p.base, PlaceBaseLocal(_))
+                            || !p.proj.is_empty()
+                            || !is_aggregate_ty(e.ty.ty)
+                        {
+                            let t = self.temp(e.ty, e.span);
+                            self.assign(place::local(t), RvalueUse(op), e.span);
+                        }
+                    }
                 }
             }
         }
@@ -1018,6 +1032,17 @@ impl builder<'_> {
             OperandCopy(p)
         }
     }
+}
+
+fn is_aggregate_ty(t: type_id) -> bool {
+    matches!(
+        kind(t),
+        TypeKindRecord(_)
+            | TypeKindArray(..)
+            | TypeKindSlice { .. }
+            | TypeKindVoid
+            | TypeKindFunction(_)
+    )
 }
 
 fn cast_kind(from: type_id, to: type_id) -> CastKind {
