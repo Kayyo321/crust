@@ -1,0 +1,109 @@
+<!--
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+-->
+
+# Crust: project definition
+
+Status: draft. Owner: Ko (Baczynski-Bruce). Decisions and open questions live in [docs/DECISIONS.md](docs/DECISIONS.md).
+
+## Vision
+
+C is the lingua franca of systems software, and it is unsafe by construction. Rust showed that most memory errors can be ruled out at compile time without giving up performance. Crust brings those rules to C. You keep C23 and its ABI, add a few constructs where the checker needs them, and get a compiler that can guarantee memory safety for the code it checks.
+
+## Problem
+
+- Existing C code leaks memory, frees memory twice, reads freed memory, and overflows buffers. Existing tools only find some of these, and only when they run.
+- Rewriting C in Rust is expensive, and it breaks the C ABI and existing build systems.
+- Bolting safety onto C with a separate language or a heavy runtime loses most of C's reach.
+
+## Goals
+
+| # | Goal | Measure |
+|---|---|---|
+| G1 | **C23 compatibility.** Every valid C23 translation unit compiles in C mode. | Pass rate on a C23 conformance suite, tracked from M2 |
+| G2 | **Memory safety in checked code.** No use-after-free, double free, leak, out-of-bounds access, or uninitialized read. | Soundness corpus passes; sanitizer runs clean |
+| G3 | **Full C ABI compatibility.** Crust code and C code link and call each other. | ABI test matrix passes on each supported target |
+| G4 | **Low friction.** `let`, type inference, and clear diagnostics. Annotations only where the checker needs them. | Diagnostics carry a code, a span, and a fix hint |
+| G5 | **Dependencies like cargo.** Resolve, fetch, and build libraries through `crepe`. | `crepe build` works on a multi-package project (M7) |
+| G6 | **Native performance.** Use LLVM. Checks cost nothing where the compiler can prove them away. | Benchmark overhead tracked from M5 |
+
+## Non-goals
+
+- Not a C++ compiler. No classes, templates, exceptions, or RTTI.
+- No garbage collector and no unwinding. Failed runtime checks trap.
+- Not a new language with its own syntax family. Crust is a superset of C.
+- Not a replacement for the C preprocessor in v1.
+- Not a guarantee about code inside `unsafe` blocks, or about C code the programmer links in. Those are the programmer's proof obligations. See [docs/MEMORY_SAFETY.md](docs/MEMORY_SAFETY.md).
+
+## Principles
+
+1. **Safe by default, unsafe on purpose.** Checked code is the default. Unsafe operations must be explicit and local.
+2. **Superset first.** Prefer C23 attributes over new keywords. Every new keyword is a break for some C program.
+3. **State guarantees precisely.** Write down what is guaranteed and what is not. Don't overclaim.
+4. **Fast feedback.** Tests stay fast. Coverage is a floor, not a score to chase.
+5. **Docs are the spec.** Code follows the docs. Changed behavior changes the docs in the same change.
+
+## What we take from Rust
+
+| Rust rule | In Crust |
+|---|---|
+| Single owner, move semantics | Owned values move on assignment and passing; use after move is an error |
+| Aliasing XOR mutability | Many shared borrows or one unique borrow |
+| Lifetimes | Borrows cannot outlive their owner; `'a` annotations where elision fails |
+| Definite initialization | Reading an unassigned variable is an error |
+| Drop at scope exit | Owned values are released on every path; this gives leak freedom |
+| Bounds-checked indexing | Checked where the bound is known; a trap otherwise |
+| Exhaustive `match` | Exhaustive `switch` over enums in checked code |
+
+The full mapping, with milestones, is in [docs/MEMORY_SAFETY.md](docs/MEMORY_SAFETY.md).
+
+## Toolchain at a glance
+
+- **`crust`**: the compiler. Parses C23 and Crust, checks memory safety, lowers to LLVM, emits objects, executables, static and shared libraries, and C headers. See [docs/CLI.md](docs/CLI.md).
+- **`crepe`**: the package manager. Manages dependencies, lockfiles, and builds, and calls `crust`. See [docs/CLI.md](docs/CLI.md).
+- **LLVM** for code generation and optimization. The system linker for final linking.
+
+## Milestones
+
+Each milestone ends with an exit criterion, not a date.
+
+| Milestone | Scope | Exit criterion |
+|---|---|---|
+| M0 Foundations | Repo layout, build system, CI, header and naming checks, a program that compiles through LLVM | CI green on an empty program that prints "hello" |
+| M1 C23 front end | Preprocessor, lexer, parser, and semantic analysis for C23 | Parses the C23 conformance suite with no spurious errors |
+| M2 C codegen | C23 to LLVM IR; C-compat ABI for scalars, structs, and pointers | Run-pass tests match clang output for the supported subset |
+| M3 Crust surface | `let`, `mut`, `unsafe`, lifetime syntax, `[[crust::...]]` attributes, diagnostics with codes | Compile-fail tests for each syntax rule |
+| M4 Safety core | Crust IR; move and init analysis; borrow and lifetime checking; drop elaboration | Soundness corpus: every must-reject case rejected, every must-run case runs leak-free |
+| M5 Bounds and slices | Slice types, bounds checks, C-compatible lowering of Crust types | Benchmark overhead measured and within the target set at M5 |
+| M6 Libraries | Static and shared library output; generated C headers | A C program links against a Crust library and passes the ABI matrix |
+| M7 crepe | Manifest, lockfile, path and git dependencies, build through `crust` | Multi-package project builds from a clean checkout |
+| M8 Later | Registry, threads (`Send`/`Sync`), generics, self-hosting exploration | Scoped when M7 is complete |
+
+## Success metrics
+
+- **Soundness:** zero known cases where checked code leaks, double-frees, uses freed memory, or overflows, and zero entries in the soundness corpus that the checker wrongly accepts.
+- **Compatibility:** C23 conformance pass rate, and the list of C programs that fail to compile in C mode, both tracked each release.
+- **Cost:** runtime overhead of inserted checks on the benchmark set, reported each release.
+
+## Glossary
+
+- **Checked code:** code the Crust checker analyzes. This is all code in `.c` and `.cr` files outside `unsafe` blocks, unless compiled with `--unchecked`.
+- **Unsafe code:** code inside an `unsafe` block or `unsafe` function, where the programmer takes on the proof obligations.
+- **Owned value:** a value with a single owner that is released when the owner goes out of scope.
+- **Borrow:** a reference that does not own its target. Shared borrows are read-only. Unique borrows allow mutation.
+- **Lifetime:** the region of code during which a borrow is valid.
+- **Slice:** a pointer plus a length. Indexing a slice is bounds-checked.
+- **Trap:** a deliberate, immediate program abort with a diagnostic when a runtime check fails.
+- **CrIR:** Crust IR, the mid-level representation where the safety analyses run. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- **Soundness bug:** the checker accepts a program that violates a guarantee in checked code.
+
+## Open questions
+
+The full list is in [docs/DECISIONS.md](docs/DECISIONS.md). The biggest ones:
+
+1. Reference syntax, and whether `&x` means a borrow or an address-of (D-018).
+2. The implementation language. Proposed: Rust, which the `.gitignore` already suggests (D-019).
+3. Whether all C undefined behavior is eliminated in checked code, or only the kinds that break memory safety (D-021).
+4. Whether nullable pointers get an option-like type in checked code (D-023).
