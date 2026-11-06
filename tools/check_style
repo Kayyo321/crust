@@ -1,0 +1,72 @@
+#!/bin/sh
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+#
+# Checks the house rules that tools can check (docs/CODE_STYLE.md, section 8):
+# the file header on every file, and identifiers that break the naming rule.
+# Formatting is checked separately with `cargo fmt --check`.
+# Usage: tools/check_style   (from the repository root). Exit 1 on problems.
+
+set -u
+status=0
+root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$root" || exit 2
+
+c_header='/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/'
+md_header='<!--
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+-->'
+hash_header='# Ko, (Baczynski-Bruce) 2026; Apache 2.0'
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+printf '%s\n' "$c_header" > "$tmp/c"
+printf '%s\n' "$md_header" > "$tmp/md"
+files() {
+    git ls-files --cached --others --exclude-standard "$@"
+}
+
+fail() {
+    echo "$1"
+    status=1
+}
+
+files | while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    case "$f" in
+        LICENSE | Cargo.lock | crepe.lock | *.stdout | *.crmi | *.interface.bin) continue ;;
+    esac
+    case "$f" in
+        *.c | *.h | *.cr | *.hr | *.crm | *.rs)
+            head -n 3 "$f" | cmp -s - "$tmp/c" || echo "header: $f"
+            ;;
+        *.md)
+            head -n 5 "$f" | cmp -s - "$tmp/md" || echo "header: $f"
+            ;;
+        *.toml | *.yml | *.yaml | .gitignore | tools/*)
+            first=$(head -n 1 "$f")
+            [ "$first" = "#!/bin/sh" ] && first=$(sed -n 2p "$f")
+            [ "$first" = "$hash_header" ] || echo "header: $f"
+            ;;
+    esac
+done > "$tmp/out" 2>&1
+if [ -s "$tmp/out" ]; then
+    cat "$tmp/out"
+    status=1
+fi
+
+# Naming: no camelCase functions, variables, or fields; types are snake_case
+# except enums. These patterns catch the common slips, not every case.
+camel='\b(fn|let|let mut|struct|union|typedef)[[:space:]]+[a-z]+[A-Z][A-Za-z0-9]*\b'
+if files '*.rs' '*.c' '*.h' '*.cr' '*.hr' '*.crm' | xargs grep -nE "$camel" 2>/dev/null; then
+    fail "naming: camelCase identifiers above (docs/CODE_STYLE.md, section 2)"
+fi
+pascal_struct='^[[:space:]]*(pub[[:space:]]+)?struct[[:space:]]+[A-Z][a-z0-9]'
+if files '*.rs' | xargs grep -nE "$pascal_struct" 2>/dev/null; then
+    fail "naming: PascalCase structs above; structs are snake_case"
+fi
+
+exit $status

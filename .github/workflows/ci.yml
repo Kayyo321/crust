@@ -1,0 +1,34 @@
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+#
+# The PR gate (docs/TESTING.md): style, lint, build, and every test suite.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LLVM 18 and valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 llvm-18 valgrind
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+      - name: Style
+        run: tools/check_style
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Lint
+        run: cargo clippy --all-targets --workspace -- -D warnings
+      - name: Build
+        run: cargo build --workspace
+      - name: Test
+        run: cargo test --workspace
