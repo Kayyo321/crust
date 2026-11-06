@@ -542,7 +542,11 @@ impl sema<'_> {
         };
         if spec.constexpr_ {
             if let Some(TInitExpr(e)) = &init {
-                if crate::sema::consteval::eval(e).is_none() {
+                if let Some(v) = crate::sema::consteval::eval(e) {
+                    if is_scalar(ty.ty) {
+                        self.fctx.as_mut().unwrap().constexpr_locals.insert(lid, v);
+                    }
+                } else {
                     diag::error(
                         "CR1308",
                         nsp,

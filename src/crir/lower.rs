@@ -668,6 +668,24 @@ impl builder<'_> {
     fn init_place(&mut self, p: place, init: &tinit, sp: span) {
         match init {
             TInitExpr(e) => self.expr_into(e, p),
+            TInitList { .. }
+                if p.as_local().is_some_and(|l| {
+                    let ld = &self.b.locals[l as usize];
+                    ld.is_let && !ld.mutable
+                }) =>
+            {
+                // Build the value in a temporary, then initialize the
+                // immutable binding once, as a whole.
+                let ty = self.b.locals[p.as_local().unwrap() as usize].ty;
+                let t = self.temp(ty, sp);
+                self.init_place(place::local(t), init, sp);
+                let op = if is_owned(ty.ty) {
+                    OperandMove(place::local(t))
+                } else {
+                    OperandCopy(place::local(t))
+                };
+                self.assign(p, RvalueUse(op), sp);
+            }
             TInitList { zero, items } => {
                 if *zero {
                     self.assign(p.clone(), RvalueZero, sp);

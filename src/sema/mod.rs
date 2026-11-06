@@ -61,6 +61,8 @@ pub struct func_ctx {
     pub blocks: Vec<Vec<local_id>>,
     pub name: sym,
     pub static_count: u32,
+    /// Values of `constexpr` locals, so they work in constant expressions.
+    pub constexpr_locals: HashMap<local_id, ConstValue>,
 }
 
 /// A `[[crust::drop(f)]]` attribute waiting for `f` to be declared.
@@ -965,7 +967,10 @@ impl<'a> sema<'a> {
             diag::error("CR1321", nsp, "a global variable cannot hold a borrow in Crust 0.1.0");
         }
         let is_func = is_function(ty.ty);
-        let internal = storage == Some(StorageStatic);
+        // A file-scope `constexpr` object has internal linkage, so a header
+        // that defines one can be included by several files.
+        let internal =
+            storage == Some(StorageStatic) || (spec.constexpr_ && storage != Some(StorageExtern));
         let g = self.declare_global(name, ty, is_func, nsp, internal);
         self.apply_decl_flags(g, spec, d, exported);
         if let Some(label) = &id.asm_label {
@@ -1150,6 +1155,7 @@ impl<'a> sema<'a> {
             blocks: vec![Vec::new()],
             name,
             static_count: 0,
+            constexpr_locals: HashMap::new(),
         });
         self.push_scope();
         let mut params = Vec::new();
@@ -1255,6 +1261,15 @@ impl<'a> sema<'a> {
                         format!("drop function `{}` is not declared", pd.func),
                     )
                     .help("declare it at file scope: `void name(struct T *value);`");
+                }
+            }
+        }
+        // Names in export lists are exported too, so they get external symbols.
+        for (name, _) in &self.export_names {
+            if let Some(BindingGlobal(g)) = self.scopes[0].ord.get(name) {
+                let gd = &mut self.prog.globals[*g as usize];
+                if gd.imported_from.is_none() {
+                    gd.exported = true;
                 }
             }
         }

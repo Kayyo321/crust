@@ -144,6 +144,28 @@ impl sema<'_> {
                 texpr::rvalue(TExprCast(CastKindFuncDecay, bx(e)), t, sp)
             }
             _ => {
+                // The value of a `constexpr` object is a constant (C23 6.6).
+                let known = match e.kind {
+                    TExprGlobal(g) => {
+                        let gd = &self.prog.globals[g as usize];
+                        if gd.is_constexpr || (gd.is_let && !gd.needs_unsafe) {
+                            gd.const_value
+                        } else {
+                            None
+                        }
+                    }
+                    TExprLocal(l) => {
+                        self.fctx.as_ref().and_then(|f| f.constexpr_locals.get(&l).copied())
+                    }
+                    _ => None,
+                };
+                if let Some(v) = known {
+                    let t = e.ty.unqual();
+                    return match v {
+                        ConstValueInt(i) => texpr::rvalue(TExprInt(i), t, sp),
+                        ConstValueFloat(f) => texpr::rvalue(TExprFloat(f), t, sp),
+                    };
+                }
                 if self.reads_union_member(&e) {
                     self.require_unsafe(sp, "reading a union member");
                 }
