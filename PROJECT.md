@@ -6,7 +6,7 @@
 
 # Crust: project definition
 
-Status: draft. Crust 0.1.0 is implemented (see the milestone notes below). Owner: Ko (Baczynski-Bruce). Decisions and open questions live in [docs/DECISIONS.md](docs/DECISIONS.md).
+Status: draft. Crust 0.1.1 is implemented (see the milestone notes below). Owner: Ko (Baczynski-Bruce). Decisions and open questions live in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Vision
 
@@ -72,7 +72,7 @@ The full mapping, with milestones, is in [docs/MEMORY_SAFETY.md](docs/MEMORY_SAF
 
 Each milestone ends with an exit criterion, not a date.
 
-Crust 0.1.0 covers M0, most of M1–M7 for x86-64 Linux, and the first part of the safety core: the analyses run on CrIR, a three-module program builds and runs, a C program links a Crust library, and a multi-package crepe project with several targets builds. Not yet: the C23 conformance suite, coverage gates, AArch64, the LLVM invariant-verification pass, and the benchmark set.
+Crust 0.1.1 covers M0, most of M1–M7 for x86-64 Linux, and the first part of the safety core: the analyses run on CrIR, a three-module program builds and runs, a C program links a Crust library, and a multi-package crepe project with several targets builds. Not yet: the C23 conformance suite, coverage gates, AArch64, the LLVM invariant-verification pass, and the benchmark set.
 
 | Milestone | Scope | Exit criterion |
 |---|---|---|
@@ -112,7 +112,7 @@ Crust 0.1.0 covers M0, most of M1–M7 for x86-64 Linux, and the first part of t
 The full list is in [docs/DECISIONS.md](docs/DECISIONS.md). The biggest ones:
 
 1. Whether all C undefined behavior is eliminated in checked code, or only the kinds that break memory safety (D-021).
-2. Integer overflow in checked code (D-022). 0.1.0 wraps in the meantime (D-042).
+2. Integer overflow in checked code (D-022). 0.1 wraps in the meantime (D-042).
 3. Whether nullable pointers get an option-like type in checked code (D-023).
 4. Struct fields that hold borrows (D-048).
 

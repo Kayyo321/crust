@@ -6,7 +6,7 @@
 
 # Crust examples
 
-Each folder shows one part of what Crust adds to C23. Every program here builds and runs with Crust 0.1.0, and `cargo test --test examples` keeps it that way. Comments in each file point to the section of the docs that defines the feature.
+Each folder shows one part of what Crust adds to C23. Every program here builds and runs with Crust 0.1.1, and `cargo test --test examples` keeps it that way. Comments in each file point to the section of the docs that defines the feature.
 
 Build `crust` and `crepe` first:
 

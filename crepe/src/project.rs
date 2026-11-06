@@ -171,7 +171,7 @@ pub fn add_dependency(root: &Path, name: &str, source: AddSource) -> crepe_resul
         AddSourceRegistry(version) => {
             let what = version.map(|v| format!("{name}@{v}")).unwrap_or_else(|| name.to_string());
             return fail(format!(
-                "cannot add `{what}`: registry dependencies are not supported in 0.1.0\n\
+                "cannot add `{what}`: registry dependencies are not supported in 0.1\n\
                  help: use `crepe add {name} --path <dir>` or `crepe add {name} --git <url>`"
             ));
         }

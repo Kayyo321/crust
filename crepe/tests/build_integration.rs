@@ -411,7 +411,7 @@ exit 0
         ensure(reg)
             .exits_with(1)
             .stderr()
-            .contains("registry dependencies are not supported in 0.1.0");
+            .contains("registry dependencies are not supported in 0.1");
 
         sb.write(
             "hello/tests/pass.crm",

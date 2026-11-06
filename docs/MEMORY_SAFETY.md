@@ -6,7 +6,7 @@
 
 # Memory safety in Crust
 
-Status: draft; implemented by Crust 0.1.0 as described, with the limits noted below. This document is the contract. If the compiler behaves differently, the compiler has a soundness bug. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md).
+Status: draft; implemented by Crust 0.1.1 as described, with the limits noted below. This document is the contract. If the compiler behaves differently, the compiler has a soundness bug. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md).
 
 ## 1. The guarantee
 
@@ -74,7 +74,7 @@ C pointers `T *` are the hardest part of checked code. Crust tracks where a poin
 
 This keeps ordinary C code checked where the origin is visible, and forces an explicit `unsafe` where it is not.
 
-How 0.1.0 tracks pointers (D-041):
+How 0.1 tracks pointers (D-041):
 
 - Every value that can hold a pointer carries a set of origins: the locals it may point into, the lifetime regions of borrowed parameters, static data, or unknown memory. The sets follow assignments, struct members, calls, and stores through tracked pointers.
 - A pointer to a local keeps that local borrowed while any live value may hold it. The local cannot be moved out of or go out of scope during that time (CR0505, CR0597). Unlike a `ref` borrow, a raw pointer does not stop reads or writes of the local; aliasing raw pointers is C, not a memory error.
@@ -105,7 +105,7 @@ Checks run in two places. The split is deliberate. See [ARCHITECTURE.md](ARCHITE
 
 A pass failure in step 2 is a compiler bug, and it blocks the build.
 
-In 0.1.0, bounds checks and division-by-zero checks are inserted when the AST is lowered to CrIR, so the analyses see them, and LLVM receives them as ordinary branches to a trap. Step 2 is not implemented yet. With `-g`, AddressSanitizer and LeakSanitizer are enabled when clang's sanitizer runtime is installed. The test suite also runs every run-pass program under valgrind's leak checker when it is available.
+In 0.1, bounds checks and division-by-zero checks are inserted when the AST is lowered to CrIR, so the analyses see them, and LLVM receives them as ordinary branches to a trap. Step 2 is not implemented yet. With `-g`, AddressSanitizer and LeakSanitizer are enabled when clang's sanitizer runtime is installed. The test suite also runs every run-pass program under valgrind's leak checker when it is available.
 
 ## 8. Diagnostics
 

@@ -202,7 +202,7 @@ impl sema<'_> {
                     diag::error("CR1315", sp, "a member cannot have function type");
                 }
                 if is_ref(ty.ty) || is_slice(ty.ty) {
-                    diag::error("CR1321", sp, "a struct or union member cannot hold a borrow in Crust 0.1.0")
+                    diag::error("CR1321", sp, "a struct or union member cannot hold a borrow in Crust 0.1")
                         .help("store a raw pointer and borrow at the use site, or pass the borrow as a parameter");
                 }
                 if r.is_union && is_owned(ty.ty) {
@@ -231,7 +231,7 @@ impl sema<'_> {
         let mut min_align = 1;
         for a in &attrs {
             if a.prefix.is_none() && a.name.as_str().trim_matches('_') == "packed" {
-                diag::warning("CR1320", a.span, "`packed` is ignored by Crust 0.1.0");
+                diag::warning("CR1320", a.span, "`packed` is ignored by Crust 0.1");
             }
             if a.name.as_str().trim_matches('_') == "aligned" {
                 min_align = 16;

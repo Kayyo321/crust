@@ -6,7 +6,7 @@
 
 # Architecture
 
-Status: implemented by Crust 0.1.0. The repo layout below is the real one. Related: [MEMORY_SAFETY.md](MEMORY_SAFETY.md), [ABI.md](ABI.md), [CLI.md](CLI.md).
+Status: implemented by Crust 0.1.1. The repo layout below is the real one. Related: [MEMORY_SAFETY.md](MEMORY_SAFETY.md), [ABI.md](ABI.md), [CLI.md](CLI.md).
 
 ## 1. Pipeline
 

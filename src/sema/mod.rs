@@ -555,7 +555,7 @@ impl<'a> sema<'a> {
             error()
         };
         if c.complex > 0 {
-            diag::error("CR1301", sp, "complex types are not supported in Crust 0.1.0");
+            diag::error("CR1301", sp, "complex types are not supported in Crust 0.1");
             return error();
         }
         if c.va_list > 0 {
@@ -654,7 +654,7 @@ impl<'a> sema<'a> {
                         diag::error(
                             "CR1321",
                             *asp,
-                            "arrays of borrows are not supported in Crust 0.1.0",
+                            "arrays of borrows are not supported in Crust 0.1",
                         );
                     }
                     let len = match size {
@@ -663,7 +663,7 @@ impl<'a> sema<'a> {
                                 diag::error(
                                     "CR1301",
                                     *asp,
-                                    "variable-length arrays are not supported in Crust 0.1.0",
+                                    "variable-length arrays are not supported in Crust 0.1",
                                 );
                             }
                             None
@@ -678,7 +678,7 @@ impl<'a> sema<'a> {
                                 diag::error(
                                     "CR1301",
                                     e.span,
-                                    "variable-length arrays are not supported in Crust 0.1.0",
+                                    "variable-length arrays are not supported in Crust 0.1",
                                 )
                                 .note("the array size must be an integer constant expression");
                                 Some(1)
@@ -964,7 +964,7 @@ impl<'a> sema<'a> {
             return;
         }
         if is_ref(ty.ty) || is_slice(ty.ty) {
-            diag::error("CR1321", nsp, "a global variable cannot hold a borrow in Crust 0.1.0");
+            diag::error("CR1321", nsp, "a global variable cannot hold a borrow in Crust 0.1");
         }
         let is_func = is_function(ty.ty);
         // A file-scope `constexpr` object has internal linkage, so a header
@@ -1086,7 +1086,7 @@ impl<'a> sema<'a> {
             diag::error(
                 "CR1321",
                 l.name_span,
-                "a global variable cannot hold a borrow in Crust 0.1.0",
+                "a global variable cannot hold a borrow in Crust 0.1",
             );
         }
         let ty = if l.mutable { ty } else { ty.with(QualConst) };

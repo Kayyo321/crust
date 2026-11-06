@@ -14,7 +14,7 @@ Crust is a C compiler for C23 with a checked mode that enforces Rust's memory-sa
 
 ## Current state
 
-Crust 0.1.0: a Rust workspace with the `crust` compiler (`src/`) and the `crepe` package manager (`crepe/`). Build and test commands are in docs/TESTING.md, section 1. Do not invent others.
+Crust 0.1.1: a Rust workspace with the `crust` compiler (`src/`), the `crepe` package manager (`crepe/`), and `ensure` (`ensure/`), the assertion library the Rust tests use. Build and test commands are in docs/TESTING.md, section 1. Do not invent others.
 
 ## Where things are
 

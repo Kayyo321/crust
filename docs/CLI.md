@@ -6,7 +6,7 @@
 
 # Command-line tools
 
-Status: implemented by Crust 0.1.0. Flags can still change before 1.0, where the stable interface starts. Related: [ARCHITECTURE.md](ARCHITECTURE.md), [ABI.md](ABI.md).
+Status: implemented by Crust 0.1.1. Flags can still change before 1.0, where the stable interface starts. Related: [ARCHITECTURE.md](ARCHITECTURE.md), [ABI.md](ABI.md).
 
 Two binaries:
 
@@ -55,7 +55,7 @@ Several inputs compile together: modules are ordered so each comes after the mod
 |---|---|
 | `-O0` … `-O3`, `-Os` | Optimization level. Default `-O0`. |
 | `-g` | Debug info. Enables AddressSanitizer and LeakSanitizer when clang's sanitizer runtime is installed. |
-| `--target=<triple>` | LLVM target triple. 0.1.0 supports `x86_64-pc-linux-gnu` only (D-044). |
+| `--target=<triple>` | LLVM target triple. 0.1 supports `x86_64-pc-linux-gnu` only (D-044). |
 | `-fPIC` | Position-independent code |
 
 ### Paths and linking

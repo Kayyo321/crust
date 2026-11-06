@@ -6,7 +6,7 @@
 
 # C ABI compatibility
 
-Status: implemented by Crust 0.1.0 for x86-64 Linux. Goal G3: full C ABI compatibility. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) (D-003, amended by D-034), [MODULES.md](MODULES.md).
+Status: implemented by Crust 0.1.1 for x86-64 Linux. Goal G3: full C ABI compatibility. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md) (D-003, amended by D-034), [MODULES.md](MODULES.md).
 
 ## 1. The rule
 
@@ -24,8 +24,8 @@ Crust does not add a runtime ABI requirement on C callers. A C program calling a
 
 | Target | Status |
 |---|---|
-| x86-64 System V (Linux, BSD) | Milestone M2. Linux supported by 0.1.0 (D-044). |
-| AArch64 AAPCS (Linux) | Milestone M2. Not in 0.1.0. |
+| x86-64 System V (Linux, BSD) | Milestone M2. Linux supported by 0.1 (D-044). |
+| AArch64 AAPCS (Linux) | Milestone M2. Not in 0.1. |
 | x86-64 System V (macOS) | Milestone M6 |
 | Windows x64 | After M7, scope TBD |
 

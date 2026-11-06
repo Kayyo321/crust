@@ -836,7 +836,7 @@ impl fn_emitter<'_, '_> {
                         diag::error(
                             "CR1301",
                             self.b.span,
-                            "`va_arg` of a struct passed in registers is not supported in Crust 0.1.0",
+                            "`va_arg` of a struct passed in registers is not supported in Crust 0.1",
                         );
                         return;
                     }

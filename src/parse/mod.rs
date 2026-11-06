@@ -973,7 +973,7 @@ impl parser<'_> {
                 }
                 SymUBitInt | SymUDecimal32 | SymUDecimal64 | SymUDecimal128 => {
                     self.bump();
-                    diag::error("CR1301", t.span, format!("`{k}` is not supported in Crust 0.1.0"));
+                    diag::error("CR1301", t.span, format!("`{k}` is not supported in Crust 0.1"));
                     if self.at(SymLParen) {
                         self.bump();
                         self.cond_expr();

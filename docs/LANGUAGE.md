@@ -6,7 +6,7 @@
 
 # The Crust language
 
-Status: draft. Crust 0.1.0 implements this document except where a section says otherwise. Anything marked **(open)** is undecided. See [DECISIONS.md](DECISIONS.md).
+Status: draft. Crust 0.1.1 implements this document except where a section says otherwise. Anything marked **(open)** is undecided. See [DECISIONS.md](DECISIONS.md).
 
 ## 1. What Crust is
 
@@ -113,7 +113,7 @@ int main(void) {
 
 `&x` is always C address-of. It gives a raw pointer, which the checker tracks when it points at a live local (see [MEMORY_SAFETY.md](MEMORY_SAFETY.md#5-raw-pointers)). A borrow converts to a raw pointer only with an explicit cast, and a shared borrow converts only to a pointer to `const`.
 
-In 0.1.0, a borrow cannot be a struct or union member, an array element, or a global variable (D-041). Lifetime parameters on structs are open (D-048).
+In 0.1, a borrow cannot be a struct or union member, an array element, or a global variable (D-041). Lifetime parameters on structs are open (D-048).
 
 ## 6. Arrays, slices, and bounds
 
@@ -182,7 +182,7 @@ Crust-specific attributes use the C23 vendor-attribute form `[[crust::name]]`. A
 
 In checked code, C undefined behavior that can corrupt memory is turned into a trap. Examples: out-of-range indexes, and signed overflow in index computations. Which kinds of undefined behavior are covered is **(open, D-021)**. Behavior that is undefined in C and out of scope for the guarantee stays documented as undefined.
 
-Until D-022 is decided, 0.1.0 gives integer arithmetic defined results (D-042): it wraps, shift counts are taken modulo the operand width, signed division overflow wraps, integer division by zero traps, and float-to-integer conversion saturates.
+Until D-022 is decided, 0.1 gives integer arithmetic defined results (D-042): it wraps, shift counts are taken modulo the operand width, signed division overflow wraps, integer division by zero traps, and float-to-integer conversion saturates.
 
 ## 12. Not in v1, or not yet
 

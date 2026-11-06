@@ -268,7 +268,7 @@ fn parse_dep_source(
     let table = match value {
         TomlValueString(v) => {
             errors.push(format!(
-                "dependency `{name} = \"{v}\"`: registry dependencies are not supported in 0.1.0\n\
+                "dependency `{name} = \"{v}\"`: registry dependencies are not supported in 0.1\n\
                  help: use `{name} = {{ path = \"...\" }}` or \
                  `{name} = {{ git = \"...\", rev = \"...\" }}`"
             ));
@@ -303,7 +303,7 @@ fn parse_dep_source(
         (None, None) => {
             let has_version = table.get("version").is_some();
             let why =
-                if has_version { "registry dependencies are not supported in 0.1.0; " } else { "" };
+                if has_version { "registry dependencies are not supported in 0.1; " } else { "" };
             errors.push(format!("dependency `{name}`: {why}expected `path` or `git`"));
             None
         }
@@ -494,10 +494,7 @@ mod tests {
     fn rejects_registry_dependencies() {
         let text = format!("{Package}[dependencies]\nmathx = \"1.2\"\n");
         let errors = parse_with(&text, &[]).unwrap_err();
-        assert!(
-            errors[0].contains("registry dependencies are not supported in 0.1.0"),
-            "{errors:?}"
-        );
+        assert!(errors[0].contains("registry dependencies are not supported in 0.1"), "{errors:?}");
     }
 
     #[test]

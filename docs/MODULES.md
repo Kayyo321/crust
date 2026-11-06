@@ -6,7 +6,7 @@
 
 # Modules
 
-Status: draft; implemented by Crust 0.1.0. **Accepted:** `.crm` modules are the modern way to organize Crust projects. `.cr` source with `.hr` headers stays for old-school code (D-020), and the details below (D-028 to D-036). Proposed refinements: D-039 and D-046. Related: [LANGUAGE.md](LANGUAGE.md), [ABI.md](ABI.md), [ARCHITECTURE.md](ARCHITECTURE.md), [CLI.md](CLI.md), [DECISIONS.md](DECISIONS.md).
+Status: draft; implemented by Crust 0.1.1. **Accepted:** `.crm` modules are the modern way to organize Crust projects. `.cr` source with `.hr` headers stays for old-school code (D-020), and the details below (D-028 to D-036). Proposed refinements: D-039 and D-046. Related: [LANGUAGE.md](LANGUAGE.md), [ABI.md](ABI.md), [ARCHITECTURE.md](ARCHITECTURE.md), [CLI.md](CLI.md), [DECISIONS.md](DECISIONS.md).
 
 ## 1. Three kinds of Crust file
 

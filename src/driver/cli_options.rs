@@ -161,7 +161,7 @@ pub fn parse(args: &[String]) -> Result<options, String> {
     if let Some(t) = &o.target {
         if !t.starts_with("x86_64") || !t.contains("linux") {
             return Err(format!(
-                "target `{t}` is not supported by Crust 0.1.0; the supported target is x86_64-pc-linux-gnu"
+                "target `{t}` is not supported by Crust 0.1; the supported target is x86_64-pc-linux-gnu"
             ));
         }
     }

@@ -33,7 +33,7 @@ codes! {
     "CR1201", "syntax error", "The parser expected a different token here. The message names what it expected.";
     "CR1202", "invalid declaration specifiers", "The declaration specifiers conflict, repeat a storage class, or use one where it is not allowed.";
     "CR1203", "unknown type name", "A name used as a type is not a typedef in scope. C23 has no implicit `int` and no K&R parameter lists.";
-    "CR1301", "unsupported feature", "The construct is valid C23 but is not supported by Crust 0.1.0. The message names the feature.";
+    "CR1301", "unsupported feature", "The construct is valid C23 but is not supported by Crust 0.1. The message names the feature.";
     "CR1302", "undeclared identifier", "The name is not declared in this scope. Declare it, include the header that declares it, or import it from its module.";
     "CR1303", "conflicting declaration", "A name is declared twice in the same scope with incompatible types, or defined twice.";
     "CR1304", "incompatible types", "A value of one type is used where an incompatible type is required, for example in an assignment, an argument, or a return.";
@@ -53,7 +53,7 @@ codes! {
     "CR1318", "invalid cast", "The cast converts between types that cannot be converted, such as a struct to an integer.";
     "CR1319", "invalid use of void, array, or function type", "The expression has a type that cannot be used here, such as a `void` value or an array assigned as a whole.";
     "CR1320", "invalid attribute", "The attribute is unknown, has the wrong arguments, or is applied to something it does not apply to. Crust attributes are `[[crust::drop(f)]]`, `[[crust::safe]]`, and `[[crust::c_abi]]`.";
-    "CR1321", "invalid borrow type", "Borrows (`ref T`, `ref mut T`) and slices (`ref [T]`) cannot be used here. In 0.1.0 they cannot be struct or union members, array elements, or global variables, and they exist only in Crust files.";
+    "CR1321", "invalid borrow type", "Borrows (`ref T`, `ref mut T`) and slices (`ref [T]`) cannot be used here. In 0.1 they cannot be struct or union members, array elements, or global variables, and they exist only in Crust files.";
     "CR1322", "type annotation needed", "A `let` binding without an initializer needs a type, either written (`let x: int;`) or inferred from an assignment that comes before any use.";
     "CR1323", "qualifier discarded", "The conversion drops a `const` or `volatile` qualifier from the pointed-to type.";
     "CR1401", "module file included", "A `.crm` module cannot be included with `#include`. Import its exports with `import { ... } from \"name\";`.";
@@ -62,8 +62,8 @@ codes! {
     "CR1404", "unknown module", "No module with this name is part of the build, and no interface file for it was found. Same-package modules must be compiled first, or given as inputs in the same invocation; dependency packages are found through `--extern`.";
     "CR1405", "name not exported", "The imported module does not export this name. Only exported names can be imported. The message lists the module's exports.";
     "CR1406", "duplicate name", "An import introduces a name that is already imported or declared in this file. Rename one of them with `as`.";
-    "CR1407", "import cycle", "Modules cannot import each other in a cycle in Crust 0.1.0 (D-031). Move the shared declarations into a third module.";
-    "CR1408", "unsupported import or export form", "Crust 0.1.0 supports named imports, namespace imports, named exports, export lists, `export ... from`, and `export *` (D-033). Default exports, default imports, and side-effect imports are not supported.";
+    "CR1407", "import cycle", "Modules cannot import each other in a cycle in Crust 0.1 (D-031). Move the shared declarations into a third module.";
+    "CR1408", "unsupported import or export form", "Crust 0.1 supports named imports, namespace imports, named exports, export lists, `export ... from`, and `export *` (D-033). Default exports, default imports, and side-effect imports are not supported.";
     "CR1409", "export outside a module", "Only `.crm` modules can export. A `.cr` file has no module name, and `.c` files are C.";
     "CR1410", "duplicate module", "Two files in the same build declare the same module name.";
     "CR1411", "unknown package", "The import names a package that was not given with `--extern`. With crepe, list the package under `[dependencies]` in `crepe.toml` (D-029).";
