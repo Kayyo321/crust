@@ -52,6 +52,7 @@ int main(void) {
 ## Documentation
 
 - [PROJECT.md](PROJECT.md): goals, scope, milestones
+- [examples/](examples/README.md): a runnable example of each Crust feature
 - [docs/README.md](docs/README.md): index of the full documentation set
 - [docs/MODULES.md](docs/MODULES.md): modules, imports, and exports, which replace headers
 - [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md): rules for AI coding agents

@@ -17,7 +17,7 @@ Run from the repository root. Prerequisites are in [CONTRIBUTING.md](CONTRIBUTIN
 | Build `crust` and `crepe` | `cargo build --workspace` |
 | Fast tests (unit tests only) | `cargo test --workspace --lib --bins` |
 | Full tests (the PR gate) | `cargo test --workspace` |
-| One suite | `cargo test --test suite`, `--test abi`, `--test interface` |
+| One suite | `cargo test --test suite`, `--test abi`, `--test interface`, `--test examples` |
 | Style check | `tools/check_style` |
 | Formatting | `cargo fmt --all --check` |
 | Lints | `cargo clippy --all-targets --workspace -- -D warnings` |
