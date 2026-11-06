@@ -12,5 +12,8 @@ rust-version.workspace = true
 name = "crepe"
 path = "src/main.rs"
 
+[dev-dependencies]
+ensure = { path = "../ensure" }
+
 [lints]
 workspace = true

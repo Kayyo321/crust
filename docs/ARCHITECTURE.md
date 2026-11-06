@@ -74,6 +74,7 @@ src/
   abi/        target layouts and calling conventions
   modules/    module graph, import resolution, .crmi reading and writing
 crepe/        crepe entry point and dependency resolution (separate binary)
+ensure/       fluent test assertions, `ensure(x).cannot_be(y)` (TESTING.md, section 9)
 lib/include/  freestanding C headers that ship with crust (stddef.h, stdarg.h, ...)
 tests/        compile_fail/, run_pass/, modules/, pairs/, soundness/, abi/, interface/
 tools/        check_style (header and naming check)
@@ -84,7 +85,7 @@ Modules depend downward only: `driver` → everything; `sema` must not depend on
 
 ## 5. Implementation language
 
-Rust (D-019), as one Cargo workspace with two binaries, `crust` and `crepe`. Self-hosting in Crust is a later goal. The naming rules in [CODE_STYLE.md](CODE_STYLE.md) need the lint allowances in the root `Cargo.toml`. The compiler has no crate dependencies.
+Rust (D-019), as one Cargo workspace with two binaries, `crust` and `crepe`. Self-hosting in Crust is a later goal. The naming rules in [CODE_STYLE.md](CODE_STYLE.md) need the lint allowances in the root `Cargo.toml`. The compiler has no crate dependencies. The workspace also holds `ensure`, a test-only assertion library that nothing ships.
 
 LLVM 18 (D-024). `src/codegen` writes textual LLVM IR, and the driver runs LLVM 18's `clang` to turn it into objects and to link. Building crust needs no LLVM libraries. The IR stays inside LLVM's stable textual format, so the pin is one major version.
 

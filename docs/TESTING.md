@@ -18,6 +18,7 @@ Run from the repository root. Prerequisites are in [CONTRIBUTING.md](CONTRIBUTIN
 | Fast tests (unit tests only) | `cargo test --workspace --lib --bins` |
 | Full tests (the PR gate) | `cargo test --workspace` |
 | One suite | `cargo test --test suite`, `--test abi`, `--test interface`, `--test examples` |
+| The `ensure` library | `cargo test -p ensure` |
 | Style check | `tools/check_style` |
 | Formatting | `cargo fmt --all --check` |
 | Lints | `cargo clippy --all-targets --workspace -- -D warnings` |
@@ -108,3 +109,41 @@ A flaky test is a bug.
 
 - CI publishes the test summary, the coverage report, and the conformance pass rate on each run.
 - Conformance pass rate and the list of failing C programs are tracked in each release note.
+
+## 9. Writing checks with `ensure`
+
+Rust tests in this repo use the `ensure` crate (`ensure/`, a workspace member and a dev-dependency of `crust` and `crepe`). A check reads as a sentence: `ensure(value)`, then what must hold.
+
+```rust
+use ensure::*;
+
+ensure(exit_code).named("exit code").is(0);
+ensure(stderr).cannot_contain("panicked");
+ensure(lines).has_len(3).contains("Compiling util");
+ensure(found).is_some().is("geometry");
+ensure(|| divide(1, 0)).panics().contains("zero");
+```
+
+A failed check panics at the line of the test, and shows what it wanted and what it found:
+
+```
+ensure failed: exit code
+  wanted: exactly 0
+   found: 3
+```
+
+| Kind | Checks |
+|---|---|
+| Equality | `is(x)`, `cannot_be(x)`, `is_one_of([..])`, `cannot_be_one_of([..])`, `satisfies("is even", \|n\| n % 2 == 0)` |
+| Order | `is_above(x)`, `is_below(x)`, `is_at_least(x)`, `is_at_most(x)`, `is_between(low, high)`, `is_close_to(x, tolerance)` for `f64` |
+| Shape | `is_true()`, `is_false()`, `is_some()`, `is_none()`, `is_ok()`, `is_err()` |
+| Text | `starts_with(..)`, `ends_with(..)`, `contains(..)`, `cannot_contain(..)` |
+| Lists, sets, maps | `has_len(n)`, `is_empty()`, `cannot_be_empty()`, `contains(item)`, `cannot_contain(item)` |
+| Panics | `panics()`, `does_not_panic()` on a closure |
+
+- A passing check returns the subject, so checks chain: `ensure(n).is_above(1).is_below(9)`.
+- `is_some`, `is_ok`, `is_err`, and `panics` continue the chain with what they unwrapped: the inner value, or the panic message.
+- `.named("what")` heads the failure message. Use it when the value is not obvious from the line.
+- Use `ensure` for assertions in Rust tests. `assert!` stays fine inside the library code of a test helper that already uses it, but new checks in tests use `ensure`.
+- The `ensure` crate has no dependencies and is never part of `crust` or `crepe` themselves.
+- Test the checks themselves in `ensure/tests/`. A new check needs a passing case and a failing case that matches its message.

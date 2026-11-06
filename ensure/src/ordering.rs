@@ -1,0 +1,69 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// Order checks. Bounds are inclusive only where the name says "at" or "between".
+use crate::report::show;
+use crate::subjects::subject;
+use std::fmt::Debug;
+
+impl<T: Debug> subject<T> {
+    /// The value is greater than `floor`.
+    #[track_caller]
+    pub fn is_above<U: Debug>(self, floor: U) -> Self
+    where
+        T: PartialOrd<U>,
+    {
+        if !(self.value > floor) {
+            self.fail_with_value(format!("above {}", show(&floor)));
+        }
+        self
+    }
+
+    /// The value is less than `ceiling`.
+    #[track_caller]
+    pub fn is_below<U: Debug>(self, ceiling: U) -> Self
+    where
+        T: PartialOrd<U>,
+    {
+        if !(self.value < ceiling) {
+            self.fail_with_value(format!("below {}", show(&ceiling)));
+        }
+        self
+    }
+
+    /// The value is `minimum` or more.
+    #[track_caller]
+    pub fn is_at_least<U: Debug>(self, minimum: U) -> Self
+    where
+        T: PartialOrd<U>,
+    {
+        if !(self.value >= minimum) {
+            self.fail_with_value(format!("at least {}", show(&minimum)));
+        }
+        self
+    }
+
+    /// The value is `maximum` or less.
+    #[track_caller]
+    pub fn is_at_most<U: Debug>(self, maximum: U) -> Self
+    where
+        T: PartialOrd<U>,
+    {
+        if !(self.value <= maximum) {
+            self.fail_with_value(format!("at most {}", show(&maximum)));
+        }
+        self
+    }
+
+    /// The value is from `low` to `high`, both included.
+    #[track_caller]
+    pub fn is_between<U: Debug>(self, low: U, high: U) -> Self
+    where
+        T: PartialOrd<U>,
+    {
+        if !(self.value >= low && self.value <= high) {
+            self.fail_with_value(format!("from {} to {}", show(&low), show(&high)));
+        }
+        self
+    }
+}

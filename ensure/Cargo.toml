@@ -1,0 +1,13 @@
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+
+[package]
+name = "ensure"
+description = "Fluent assertions for Crust's own tests: ensure(x).cannot_be(y)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
