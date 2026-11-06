@@ -1,0 +1,16 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module wordcount;
+
+#include <stdio.h>
+
+import { count_words } from "text.words";
+
+[[crust::safe]] int printf(const char *format, ...);
+
+int main(void) {
+    char text[] = "modules compile once and are shared";
+    printf("%zu\n", count_words(ref text));
+    return 0;
+}

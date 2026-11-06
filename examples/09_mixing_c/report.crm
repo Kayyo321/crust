@@ -1,0 +1,33 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// A Crust module that uses a C file of the same program, the C standard
+// library, and libm.
+//
+//   crust report.crm stats.c -o report -lm && ./report
+module report;
+
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include "stats.h"
+
+// Safe to call: pure functions with no pointer preconditions.
+[[crust::safe]] double sqrt(double x);
+[[crust::safe]] int printf(const char *format, ...);
+
+int main(void) {
+    double samples[4] = { 2.0, 4.0, 4.0, 6.0 };
+    struct stats s;
+    unsafe {
+        // SAFETY: stats_of reads exactly 4 doubles from `samples`.
+        s = stats_of(samples, 4, 0, 0);
+    }
+    char label[16];
+    unsafe {
+        // SAFETY: the copied string fits in `label` with its terminator.
+        strcpy(label, "samples");
+    }
+    printf("%s: mean=%.1f max=%.1f root=%.1f\n", label, s.mean, s.max, sqrt(s.max * 6.0));
+    return 0;
+}

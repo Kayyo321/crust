@@ -1,0 +1,14 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// The root module of a library package is named after the package.
+module mathx;
+
+export int gcd(int a, int b) {
+    while (b != 0) {
+        let t = a % b;
+        a = b;
+        b = t;
+    }
+    return a < 0 ? -a : a;
+}

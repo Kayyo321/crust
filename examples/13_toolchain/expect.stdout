@@ -1,0 +1,8 @@
+module textutil
+exports:
+  unsigned long count_char(ref [char], char);  // symbol _CR.textutil.count_char
+dashes=3
+"code":"CR0381"
+unchecked build ran
+c names=6
+CR0381: use of uninitialized value

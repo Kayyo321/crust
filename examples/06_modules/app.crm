@@ -1,0 +1,30 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// The binary root. Named imports, `as` aliases, and a namespace import.
+//
+//   crust app.crm shapes.crm geometry.crm units.crm -o app -lm && ./app
+module app;
+
+#include <stdio.h>
+
+import { rect, area, rect_diagonal as diagonal, point } from "shapes";
+import { Pi, CentimetersPerMeter } from "shapes";
+import { QuadrantTwo } from "geometry";
+import * as geo from "geometry";
+
+[[crust::safe]] int printf(const char *format, ...);
+
+int main(void) {
+    let r = (struct rect){ .min = { 0, 0 }, .max = { 3, 4 } };
+    printf("area=%.1f diagonal=%.1f\n", area(r), diagonal(r));
+
+    // Through the namespace: functions, constants, typedefs, and tags.
+    let v: geo::vec2 = { -1.0, 2.0 };
+    let p = (struct geo::point){ 1.0, 1.0 };
+    let q = (struct point){ 4.0, 5.0 };
+    printf("max=%d dist=%.1f\n", geo::MaxPoints, geo::distance(p, q));
+    printf("second quadrant=%d\n", geo::quadrant_of(v) == QuadrantTwo);
+    printf("pi=%.2f cm=%d calls=%d\n", Pi, CentimetersPerMeter, geo::calls());
+    return 0;
+}

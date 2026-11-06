@@ -1,0 +1,12 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// The library root. Its `[[crust::c_abi]]` exports go into
+// build/<profile>/include/app.h.
+module app;
+
+import { gcd } from "mathx";
+
+[[crust::c_abi]] export int app_lcm(int a, int b) {
+    return a / gcd(a, b) * b;
+}

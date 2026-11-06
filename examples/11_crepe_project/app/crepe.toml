@@ -1,0 +1,35 @@
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+# A package with several build targets that share modules (D-036), and a
+# path dependency (D-029). See docs/CLI.md, section 2.
+[package]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+mathx = { path = "../mathx" }
+
+# A binary built from a module root.
+[[bin]]
+name = "fractions"
+root = "src/fractions.crm"
+
+# A second binary that shares the `text.words` module with the first.
+[[bin]]
+name = "wordcount"
+root = "src/wordcount.crm"
+
+# A static library with a generated C header.
+[[lib]]
+name = "app"
+root = "src/lib.crm"
+
+# An old-school target: .cr sources and the directory of their .hr headers.
+[[bin]]
+name = "legacy-tool"
+sources = ["src/legacy/main.cr", "src/legacy/greet.cr"]
+include = ["src/legacy"]
+
+# A test: it passes when it exits 0.
+[[test]]
+name = "words_test"
+root = "tests/words_test.crm"

@@ -1,0 +1,22 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// An old-school Crust header: included as text, so its macros reach every
+// includer (MODULES.md, section 8). The compiler checks that each
+// definition in counter.cr matches its declaration here (D-035).
+#ifndef COUNTER_HR
+#define COUNTER_HR
+
+#include <stddef.h>
+
+#define CounterLimit 3
+
+struct counter {
+    int value;
+};
+
+struct counter counter_new(void);
+bool counter_tick(ref mut struct counter c);
+size_t counter_count_until_limit(ref [int] values);
+
+#endif

@@ -1,0 +1,5 @@
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+# A library package. With no target tables, src/lib.crm is its library.
+[package]
+name = "mathx"
+version = "0.1.0"

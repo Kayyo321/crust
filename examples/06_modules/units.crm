@@ -1,0 +1,11 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// `module`, exported constants, and module-level `let` (MODULES.md).
+module units;
+
+export constexpr int CentimetersPerMeter = 100;
+
+// A module-level `let` takes a constant initializer: importing a module
+// never runs code (D-031).
+export let Pi = 3.14159;

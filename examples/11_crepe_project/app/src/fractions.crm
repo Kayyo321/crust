@@ -1,0 +1,22 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// The `fractions` binary. It imports the dependency's root module by the
+// package name, and a module of this package by its dotted name.
+module fractions;
+
+#include <stdio.h>
+
+import { gcd } from "mathx";
+import { count_words } from "text.words";
+
+[[crust::safe]] int printf(const char *format, ...);
+
+int main(void) {
+    let n = 84;
+    let d = 36;
+    let g = gcd(n, d);
+    char title[] = "reduced fraction";
+    printf("%d/%d = %d/%d (%zu words)\n", n, d, n / g, d / g, count_words(ref title));
+    return 0;
+}

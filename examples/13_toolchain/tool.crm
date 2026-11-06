@@ -1,0 +1,16 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module tool;
+
+#include <stdio.h>
+
+import { count_char } from "textutil/textutil";
+
+[[crust::safe]] int printf(const char *format, ...);
+
+int main(void) {
+    char text[] = "a-b-c-d";
+    printf("dashes=%zu\n", count_char(ref text, '-'));
+    return 0;
+}

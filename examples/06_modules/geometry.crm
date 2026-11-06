@@ -1,0 +1,59 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// Every kind of export: constants, structs, enums with their enumerators,
+// typedefs, functions, and variables. Declarations without `export` are
+// private to the module.
+module geometry;
+
+#include <math.h>                   // a C header, private to this module
+
+export constexpr int MaxPoints = 1024;
+
+export struct point {
+    double x;
+    double y;
+};
+
+export typedef struct point vec2;
+
+export enum Quadrant {
+    QuadrantOrigin,
+    QuadrantOne,
+    QuadrantTwo,
+    QuadrantThree,
+    QuadrantFour,
+};
+
+// Private: not in the interface, cannot be imported.
+double square(double v) {
+    return v * v;
+}
+
+// Private mutable module state: every use needs `unsafe`.
+let mut distance_calls = 0;
+
+export double distance(struct point a, struct point b) {
+    unsafe {
+        // SAFETY: single-threaded counter; sqrt has no preconditions.
+        distance_calls += 1;
+        return sqrt(square(a.x - b.x) + square(a.y - b.y));
+    }
+}
+
+export int calls(void) {
+    unsafe {
+        // SAFETY: single-threaded read of the counter.
+        return distance_calls;
+    }
+}
+
+export enum Quadrant quadrant_of(vec2 p) {
+    if (p.x == 0 && p.y == 0) {
+        return QuadrantOrigin;
+    }
+    if (p.x >= 0) {
+        return p.y >= 0 ? QuadrantOne : QuadrantFour;
+    }
+    return p.y >= 0 ? QuadrantTwo : QuadrantThree;
+}

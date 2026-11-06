@@ -1,0 +1,26 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// Imports, export lists, renaming, and re-exports.
+module shapes;
+
+import { point, distance } from "geometry";
+
+struct rect {
+    struct point min;
+    struct point max;
+};
+
+double rect_diagonal(struct rect r) {
+    return distance(r.min, r.max);
+}
+
+double rect_area(struct rect r) {
+    return (r.max.x - r.min.x) * (r.max.y - r.min.y);
+}
+
+export { rect };                                // an export list
+export { rect_area as area };                   // export under another name
+export { rect_diagonal };
+export { point, distance } from "geometry";     // re-export names
+export * from "units";                          // re-export a whole module

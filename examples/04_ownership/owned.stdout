@@ -1,0 +1,13 @@
+consume 1
+drop buffer 1
+drop buffer 4
+drop buffer 5
+consume 5
+drop buffer 5
+consume 7
+drop buffer 7
+end of main
+drop buffer 6
+drop buffer 40
+drop buffer 3
+drop buffer 2

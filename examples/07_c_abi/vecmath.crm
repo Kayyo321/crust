@@ -1,0 +1,60 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// `[[crust::c_abi]] export`: functions that C code can call, with plain
+// symbol names and a generated C header (MODULES.md, section 10; D-034).
+// Plain `export`s use the Crust ABI and stay out of the header.
+module vecmath;
+
+export struct vec3 {
+    double x;
+    double y;
+    double z;
+};
+
+export enum Axis : int {
+    AxisX,
+    AxisY,
+    AxisZ,
+};
+
+double dot_impl(ref struct vec3 a, ref struct vec3 b) {
+    return a->x * b->x + a->y * b->y + a->z * b->z;
+}
+
+// Borrows are Crust-only. At the C boundary the same idea is a pointer;
+// a `ref` parameter here would be error CR1412.
+[[crust::c_abi]] export double vec3_dot(const struct vec3 *a, const struct vec3 *b) {
+    // Copy the values in, so the rest of the module works on borrows of
+    // locals that the checker tracks.
+    struct vec3 x;
+    struct vec3 y;
+    unsafe {
+        // SAFETY: the C caller passes valid, non-null pointers (documented
+        // in the header contract).
+        x = *a;
+        y = *b;
+    }
+    return dot_impl(ref x, ref y);
+}
+
+[[crust::c_abi]] export struct vec3 vec3_scale(struct vec3 v, double k) {
+    return (struct vec3){ v.x * k, v.y * k, v.z * k };
+}
+
+[[crust::c_abi]] export double vec3_get(struct vec3 v, enum Axis axis) {
+    switch (axis) {
+    case AxisX:
+        return v.x;
+    case AxisY:
+        return v.y;
+    case AxisZ:
+        return v.z;
+    }
+    return 0.0;
+}
+
+// A Crust-ABI export: mangled symbol, not in the C header.
+export double vec3_norm2(ref struct vec3 v) {
+    return dot_impl(v, v);
+}

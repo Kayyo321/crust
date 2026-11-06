@@ -1,0 +1,11 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module words_test;
+
+import { count_words } from "text.words";
+
+int main(void) {
+    char text[] = " two  words ";
+    return count_words(ref text) == 2 ? 0 : 1;
+}

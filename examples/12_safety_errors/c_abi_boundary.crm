@@ -1,0 +1,9 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+// Crust-only types cannot cross into C (D-034, docs/ABI.md).
+module boundary;
+
+[[crust::c_abi]] export int total(ref [int] xs) {   //~ ERROR CR1412
+    return (int)xs.len;
+}
