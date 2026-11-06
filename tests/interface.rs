@@ -3,6 +3,7 @@
 */
 // Interface files (docs/TESTING.md, section 3): the golden `.crmi` test, and
 // the rule that a body-only change keeps the interface hash (D-030).
+use ensure::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -22,16 +23,15 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn interface_of(src: &Path, out: &Path) -> Vec<u8> {
-    let st =
+    let built =
         Command::new(crust()).arg("--emit=interface").arg(src).arg("-o").arg(out).output().unwrap();
-    assert!(st.status.success(), "{}", String::from_utf8_lossy(&st.stderr));
+    ensure(built).succeeds();
     std::fs::read(out).unwrap()
 }
 
 fn printed(crmi: &Path) -> String {
     let out = Command::new(crust()).arg("--print-interface").arg(crmi).output().unwrap();
-    assert!(out.status.success());
-    String::from_utf8(out.stdout).unwrap()
+    ensure(out).succeeds().stdout().into_value()
 }
 
 /// The printed golden file, without its leading file header.
@@ -52,11 +52,9 @@ fn golden_interface_matches() {
         std::fs::write(dir().join("geometry.interface"), format!("{header}{got}")).unwrap();
         return;
     }
-    assert_eq!(
-        got,
-        golden(),
-        "interface changed; if intended, rerun with CRUST_BLESS=1 and review the diff"
-    );
+    ensure(got)
+        .named("printed interface (if intended, rerun with CRUST_BLESS=1 and review the diff)")
+        .is(golden());
 }
 
 #[test]
@@ -68,7 +66,7 @@ fn body_change_keeps_interface_hash() {
     let before = interface_of(&a, &d.join("a.crmi"));
     std::fs::write(&a, src.replace("return v * v;", "return v * v + 0.0;")).unwrap();
     let after = interface_of(&a, &d.join("b.crmi"));
-    assert_eq!(before, after, "a function body change must not change the interface");
+    ensure(after).named("interface after a body-only change").is(before.clone());
     std::fs::write(
         &a,
         src.replace("export double distance(", "export double distance2(")
@@ -76,7 +74,9 @@ fn body_change_keeps_interface_hash() {
     )
     .unwrap();
     let changed = interface_of(&a, &d.join("c.crmi"));
-    assert_ne!(before[8..16], changed[8..16], "an export change must change the hash");
+    ensure(changed[8..16].to_vec())
+        .named("hash after an export change")
+        .cannot_be(before[8..16].to_vec());
 }
 
 #[test]
@@ -108,8 +108,7 @@ fn importers_rebuild_only_on_interface_change() {
             .env("CRUST", crust())
             .output()
             .unwrap();
-        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-        String::from_utf8_lossy(&out.stderr).into_owned()
+        ensure(out).succeeds().stderr().into_value()
     };
     build();
     std::fs::write(
@@ -118,6 +117,5 @@ fn importers_rebuild_only_on_interface_change() {
     )
     .unwrap();
     let log = build();
-    assert!(log.contains("Compiling util"), "{log}");
-    assert!(!log.contains("Compiling demo"), "importer rebuilt after a body-only change:\n{log}");
+    ensure(log).named("build log").contains("Compiling util").cannot_contain("Compiling demo");
 }

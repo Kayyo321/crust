@@ -4,6 +4,7 @@
 // The ABI matrix (docs/ABI.md, section 5), for x86-64 System V: layouts
 // match clang, and calls work in both directions between Crust and C code
 // that clang compiled.
+use ensure::*;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -30,15 +31,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn run(cmd: &mut Command) -> String {
-    let out = cmd.output().unwrap();
-    assert!(
-        out.status.success(),
-        "{:?} failed:\n{}{}",
-        cmd,
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    String::from_utf8(out.stdout).unwrap()
+    ensure(cmd.output().unwrap()).named(format!("{cmd:?}")).succeeds().stdout().into_value()
 }
 
 #[test]
@@ -54,7 +47,7 @@ fn layouts_match_clang() {
         .arg(d.join("clang_layout")));
     let a = run(&mut Command::new(d.join("crust_layout")));
     let b = run(&mut Command::new(d.join("clang_layout")));
-    assert_eq!(a, b);
+    ensure(a).named("crust layout").is(b);
 }
 
 #[test]
@@ -73,7 +66,7 @@ fn calls_work_in_both_directions() {
         .arg("-o")
         .arg(d.join("calls")));
     let out = run(&mut Command::new(d.join("calls")));
-    assert_eq!(out, std::fs::read_to_string(dir().join("calls.stdout")).unwrap());
+    ensure(out).is(std::fs::read_to_string(dir().join("calls.stdout")).unwrap());
 }
 
 #[test]
@@ -91,9 +84,11 @@ fn c_program_links_crust_libraries() {
         .arg("-o")
         .arg(d.join("abi_test.h")));
     let header = std::fs::read_to_string(d.join("abi_test.h")).unwrap();
-    assert!(header.contains("int crust_add(int, int);"), "{header}");
-    assert!(header.contains("struct s_int2 {"), "{header}");
-    assert!(!header.contains("ref "), "generated header contains Crust syntax:\n{header}");
+    ensure(header)
+        .named("generated header")
+        .contains("int crust_add(int, int);")
+        .contains("struct s_int2 {")
+        .cannot_contain("ref ");
     let main = d.join("main.c");
     std::fs::write(
         &main,
@@ -107,7 +102,7 @@ fn c_program_links_crust_libraries() {
         .arg(d.join("libabi.a"))
         .arg("-o")
         .arg(d.join("static_user")));
-    assert_eq!(run(&mut Command::new(d.join("static_user"))), "42\n");
+    ensure(run(&mut Command::new(d.join("static_user")))).is("42\n");
     run(Command::new(crust())
         .arg("-shared")
         .arg(dir().join("libsum.crm"))
@@ -122,5 +117,5 @@ fn c_program_links_crust_libraries() {
         .arg(format!("-Wl,-rpath,{}", d.display()))
         .arg("-o")
         .arg(d.join("shared_user")));
-    assert_eq!(run(&mut Command::new(d.join("shared_user"))), "42\n");
+    ensure(run(&mut Command::new(d.join("shared_user")))).is("42\n");
 }

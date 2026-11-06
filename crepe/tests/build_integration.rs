@@ -4,6 +4,7 @@
 
 #[cfg(unix)]
 mod build_tests {
+    use ensure::*;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     use std::path::{Path, PathBuf};
@@ -132,8 +133,7 @@ exit 0
 
         fn crepe_ok(&self, cwd: &str, args: &[&str]) -> Output {
             let out = self.crepe(cwd, args);
-            assert!(out.status.success(), "crepe {args:?} failed:\n{}", stderr(&out));
-            out
+            ensure(out).named(format!("crepe {args:?}")).succeeds().into_value()
         }
 
         fn calls(&self) -> Vec<String> {
@@ -222,22 +222,25 @@ exit 0
         two_target_package(&sb);
         let out = sb.crepe_ok("app", &["build"]);
         let compiled = sb.compiled();
-        assert_eq!(compiled.len(), 4, "each module compiles once: {compiled:?}");
-        assert!(position(&compiled, "src/util.crm") < position(&compiled, "src/geometry.crm"));
-        assert!(position(&compiled, "src/geometry.crm") < position(&compiled, "src/main.crm"));
-        assert!(position(&compiled, "src/geometry.crm") < position(&compiled, "src/tool.crm"));
-        let err = stderr(&out);
-        assert!(err.contains("   Compiling geometry (src/geometry.crm)"), "{err}");
-        assert!(err.contains("    Finished debug target(s)"), "{err}");
-        assert!(sb.path("app/build/debug/app").is_file());
-        assert!(sb.path("app/build/debug/tool").is_file());
-        assert!(sb.path("app/build/debug/modules/geometry.crmi").is_file());
-        assert!(sb.path("app/crepe.lock").is_file());
+        ensure(compiled.len()).named("modules compiled (each compiles once)").is(4);
+        ensure(position(&compiled, "src/util.crm"))
+            .is_below(position(&compiled, "src/geometry.crm"));
+        ensure(position(&compiled, "src/geometry.crm"))
+            .is_below(position(&compiled, "src/main.crm"))
+            .is_below(position(&compiled, "src/tool.crm"));
+        ensure(stderr(&out))
+            .contains("   Compiling geometry (src/geometry.crm)")
+            .contains("    Finished debug target(s)");
+        ensure(sb.path("app/build/debug/app")).is_a_file();
+        ensure(sb.path("app/build/debug/tool")).is_a_file();
+        ensure(sb.path("app/build/debug/modules/geometry.crmi")).is_a_file();
+        ensure(sb.path("app/crepe.lock")).is_a_file();
         // Both links take the shared geometry object.
         let links: Vec<String> = sb.calls().into_iter().filter(|c| c.starts_with("-o ")).collect();
-        assert_eq!(links.len(), 2, "{links:?}");
-        assert!(links.iter().all(|l| l.contains("modules/geometry.o")), "{links:?}");
-        assert!(sb.calls().iter().any(|c| c.contains("-O0 -g")));
+        ensure(links).has_len(2).satisfies("all take the shared geometry object", |links| {
+            links.iter().all(|l| l.contains("modules/geometry.o"))
+        });
+        ensure(sb.calls().join("\n")).contains("-O0 -g");
     }
 
     #[test]
@@ -247,7 +250,7 @@ exit 0
         sb.crepe_ok("app", &["build"]);
 
         sb.crepe_ok("app", &["build"]);
-        assert!(sb.compiled().is_empty(), "nothing changed: {:?}", sb.calls());
+        ensure(sb.compiled()).named("modules compiled when nothing changed").is_empty();
 
         // Body-only change: the interface hash stays the same, so importers stay fresh.
         sb.write(
@@ -260,12 +263,10 @@ exit 0
             ]),
         );
         sb.crepe_ok("app", &["build"]);
-        assert_eq!(sb.compiled(), vec!["src/geometry.crm"]);
-        assert_eq!(
-            sb.calls().iter().filter(|c| c.starts_with("-o ")).count(),
-            2,
-            "both targets relink"
-        );
+        ensure(sb.compiled()).is(vec!["src/geometry.crm"]);
+        ensure(sb.calls().iter().filter(|c| c.starts_with("-o ")).count())
+            .named("targets relinked")
+            .is(2);
 
         // Interface change: every importer of geometry rebuilds, util does not.
         sb.write(
@@ -279,15 +280,15 @@ exit 0
         );
         sb.crepe_ok("app", &["build"]);
         let mut compiled = sb.compiled();
-        assert_eq!(compiled[0], "src/geometry.crm");
+        ensure(compiled[0].as_str()).is("src/geometry.crm");
         compiled.sort();
-        assert_eq!(compiled, vec!["src/geometry.crm", "src/main.crm", "src/tool.crm"]);
+        ensure(compiled).is(vec!["src/geometry.crm", "src/main.crm", "src/tool.crm"]);
 
         // A new profile compiles everything into its own directory.
         sb.crepe_ok("app", &["build", "--release"]);
-        assert_eq!(sb.compiled().len(), 4);
-        assert!(sb.calls().iter().any(|c| c.contains("-O2")));
-        assert!(sb.path("app/build/release/app").is_file());
+        ensure(sb.compiled()).has_len(4);
+        ensure(sb.calls().join("\n")).contains("-O2");
+        ensure(sb.path("app/build/release/app")).is_a_file();
     }
 
     #[test]
@@ -297,11 +298,10 @@ exit 0
         sb.crepe_ok("app", &["build", "--target", "tool"]);
         let mut compiled = sb.compiled();
         compiled.sort();
-        assert_eq!(compiled, vec!["src/geometry.crm", "src/tool.crm", "src/util.crm"]);
-        assert!(!sb.path("app/build/debug/app").exists());
+        ensure(compiled).is(vec!["src/geometry.crm", "src/tool.crm", "src/util.crm"]);
+        ensure(sb.path("app/build/debug/app")).cannot_exist();
         let out = sb.crepe("app", &["build", "--target", "nope"]);
-        assert_eq!(out.status.code(), Some(1));
-        assert!(stderr(&out).contains("no target named `nope`"));
+        ensure(out).exits_with(1).stderr().contains("no target named `nope`");
     }
 
     #[test]
@@ -332,42 +332,35 @@ exit 0
             ]),
         );
         let out = sb.crepe("app", &["build"]);
-        assert_eq!(out.status.code(), Some(1));
-        assert!(
-            stderr(&out).contains("package `mathx` is not listed under [dependencies]"),
-            "{}",
-            stderr(&out)
-        );
+        ensure(out)
+            .exits_with(1)
+            .stderr()
+            .contains("package `mathx` is not listed under [dependencies]");
 
         sb.crepe_ok("app", &["add", "mathx", "--path", "../mathx"]);
         let manifest = fs::read_to_string(sb.path("app/crepe.toml")).unwrap();
-        assert!(
-            manifest.contains("[dependencies]\nmathx = { path = \"../mathx\" }\n"),
-            "{manifest}"
-        );
+        ensure(manifest).contains("[dependencies]\nmathx = { path = \"../mathx\" }\n");
 
         sb.crepe_ok("app", &["build"]);
         let compiled = sb.compiled();
-        assert_eq!(compiled.len(), 3, "extra.crm is not needed: {compiled:?}");
+        ensure(compiled).named("modules compiled (extra.crm is not needed)").has_len(3);
         let app_call = sb.calls().into_iter().find(|c| c.starts_with("-c src/main.crm")).unwrap();
-        assert!(app_call.contains("--extern mathx="), "{app_call}");
-        assert!(app_call.contains("build/debug/deps/mathx/modules"), "{app_call}");
+        ensure(app_call)
+            .named("compile call of main.crm")
+            .contains("--extern mathx=")
+            .contains("build/debug/deps/mathx/modules");
         let link = sb.calls().into_iter().find(|c| c.starts_with("-o ")).unwrap();
-        assert!(link.ends_with("build/debug/deps/mathx/libmathx.a"), "{link}");
+        ensure(link).named("link call").ends_with("build/debug/deps/mathx/libmathx.a");
         let lock = fs::read_to_string(sb.path("app/crepe.lock")).unwrap();
-        assert!(
-            lock.contains("name = \"mathx\"\nversion = \"1.0.0\"\nsource = \"path+../mathx\""),
-            "{lock}"
-        );
+        ensure(lock).contains("name = \"mathx\"\nversion = \"1.0.0\"\nsource = \"path+../mathx\"");
 
         let tree = sb.crepe_ok("app", &["tree"]);
         let tree = String::from_utf8_lossy(&tree.stdout).into_owned();
-        assert!(tree.starts_with("app v0.1.0"), "{tree}");
-        assert!(tree.contains("└── mathx v1.0.0"), "{tree}");
+        ensure(tree).starts_with("app v0.1.0").contains("└── mathx v1.0.0");
 
         sb.crepe_ok("app", &["remove", "mathx"]);
         let manifest = fs::read_to_string(sb.path("app/crepe.toml")).unwrap();
-        assert!(!manifest.contains("mathx"), "{manifest}");
+        ensure(manifest).cannot_contain("mathx");
     }
 
     #[test]
@@ -378,24 +371,21 @@ exit 0
         sb.write("app/src/a.crm", &source(&["module a;", "import { b } from \"b\";"]));
         sb.write("app/src/b.crm", &source(&["module b;", "import { a } from \"a\";"]));
         let out = sb.crepe("app/src", &["build"]);
-        assert_eq!(out.status.code(), Some(1));
-        assert!(
-            stderr(&out).contains("error: package `app`: import cycle: a -> b -> a"),
-            "{}",
-            stderr(&out)
-        );
-        assert!(sb.calls().is_empty());
+        ensure(out)
+            .exits_with(1)
+            .stderr()
+            .contains("error: package `app`: import cycle: a -> b -> a");
+        ensure(sb.calls()).named("crust calls").is_empty();
 
         sb.write("app/src/b.crm", &source(&["module b;", "int COMPILE_ERROR;"]));
         let out = sb.crepe("app", &["build"]);
-        assert_eq!(out.status.code(), Some(1));
-        let err = stderr(&out);
-        assert!(
-            err.contains("src/b.crm:1: error: COMPILE_ERROR"),
-            "diagnostics pass through: {err}"
-        );
-        assert!(err.contains("error: could not compile `b`"), "{err}");
-        assert!(!sb.path("app/build/debug/modules/b.state").exists());
+        ensure(out)
+            .exits_with(1)
+            .stderr()
+            .named("diagnostics pass through")
+            .contains("src/b.crm:1: error: COMPILE_ERROR")
+            .contains("error: could not compile `b`");
+        ensure(sb.path("app/build/debug/modules/b.state")).cannot_exist();
     }
 
     #[test]
@@ -403,23 +393,25 @@ exit 0
         let sb = sandbox::new("new");
         sb.crepe_ok("", &["new", "hello"]);
         let main = fs::read_to_string(sb.path("hello/src/main.crm")).unwrap();
-        assert!(main.starts_with(&source(&["module hello;"])), "{main}");
-        assert!(main.contains("printf(\"Hello from hello!\\n\");"), "{main}");
+        ensure(main)
+            .starts_with(source(&["module hello;"]))
+            .contains("printf(\"Hello from hello!\\n\");");
         let toml = fs::read_to_string(sb.path("hello/crepe.toml")).unwrap();
-        assert!(toml.starts_with("# Ko, (Baczynski-Bruce) 2026; Apache 2.0\n"));
+        ensure(toml).starts_with("# Ko, (Baczynski-Bruce) 2026; Apache 2.0\n");
         let ignore = fs::read_to_string(sb.path("hello/.gitignore")).unwrap();
-        assert_eq!(ignore, "# Ko, (Baczynski-Bruce) 2026; Apache 2.0\n\nbuild/\n");
+        ensure(ignore).is("# Ko, (Baczynski-Bruce) 2026; Apache 2.0\n\nbuild/\n");
 
         let out = sb.crepe_ok("hello", &["run", "--", "a", "b"]);
-        assert!(String::from_utf8_lossy(&out.stdout).contains("build/debug/hello a b"));
+        ensure(out).stdout().contains("build/debug/hello a b");
 
         let bad = sb.crepe("", &["new", "Hello-World"]);
-        assert_eq!(bad.status.code(), Some(1));
-        assert!(stderr(&bad).contains("try `hello_world`"), "{}", stderr(&bad));
+        ensure(bad).exits_with(1).stderr().contains("try `hello_world`");
 
         let reg = sb.crepe("hello", &["add", "mathx@1.2"]);
-        assert_eq!(reg.status.code(), Some(1));
-        assert!(stderr(&reg).contains("registry dependencies are not supported in 0.1.0"));
+        ensure(reg)
+            .exits_with(1)
+            .stderr()
+            .contains("registry dependencies are not supported in 0.1.0");
 
         sb.write(
             "hello/tests/pass.crm",
@@ -432,21 +424,22 @@ exit 0
         sb.write("hello/crepe.toml", &toml);
         let out = sb.crepe("hello", &["test"]);
         let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-        assert_eq!(out.status.code(), Some(1), "{stdout}");
-        assert!(stdout.contains("test pass ... ok"), "{stdout}");
-        assert!(stdout.contains("test fail ... FAILED"), "{stdout}");
+        ensure(out).exits_with(1);
+        ensure(stdout).contains("test pass ... ok").contains("test fail ... FAILED");
 
         let check = sb.crepe_ok("hello", &["check"]);
-        assert!(stderr(&check).contains("Finished"));
-        assert!(!sb.calls().iter().any(|c| c.starts_with("-o ")), "check links nothing");
+        ensure(check).stderr().contains("Finished");
+        ensure(sb.calls().iter().filter(|c| c.starts_with("-o ")).count())
+            .named("link calls of `crepe check`")
+            .is(0);
 
         sb.crepe_ok("hello", &["clean"]);
-        assert!(!sb.path("hello/build").exists());
+        ensure(sb.path("hello/build")).cannot_exist();
 
         let usage = sb.crepe("hello", &["build", "--bogus"]);
-        assert_eq!(usage.status.code(), Some(2));
+        ensure(usage).exits_with(2);
         let version = sb.crepe_ok("", &["--version"]);
-        assert_eq!(String::from_utf8_lossy(&version.stdout), "crepe 0.1.0\n");
+        ensure(version).stdout().is(format!("crepe {}\n", env!("CARGO_PKG_VERSION")));
     }
 
     #[test]
@@ -478,15 +471,15 @@ exit 0
         );
         sb.write("geo/src/tool/parse.hr", &source(&["int parse(void);"]));
         sb.crepe_ok("geo", &["build"]);
-        assert!(sb.path("geo/build/debug/libgeo.a").is_file());
-        assert!(sb.path("geo/build/debug/include/geo.h").is_file());
-        assert!(sb.path("geo/build/debug/legacy-tool").is_file());
+        ensure(sb.path("geo/build/debug/libgeo.a")).is_a_file();
+        ensure(sb.path("geo/build/debug/include/geo.h")).is_a_file();
+        ensure(sb.path("geo/build/debug/legacy-tool")).is_a_file();
         let cr = sb.calls().into_iter().find(|c| c.starts_with("-c src/tool/main.cr")).unwrap();
-        assert!(cr.contains("-I src/tool"), "{cr}");
+        ensure(cr).named("compile call of main.cr").contains("-I src/tool");
 
         // `.cr` sources have no interface: they rebuild every time; modules stay fresh.
         sb.crepe_ok("geo", &["build"]);
-        assert_eq!(sb.compiled(), vec!["src/tool/main.cr"]);
+        ensure(sb.compiled()).is(vec!["src/tool/main.cr"]);
 
         // Editing an included `.hr` header rebuilds the modules that include it.
         sb.write(
@@ -496,8 +489,8 @@ exit 0
         sb.crepe_ok("geo", &["build"]);
         sb.write("geo/src/tool/parse.hr", &source(&["int parse(int);"]));
         sb.crepe_ok("geo", &["build"]);
-        assert_eq!(sb.compiled(), vec!["src/shapes.crm", "src/tool/main.cr"]);
-        assert!(Path::new(&sb.path("geo/build/debug/modules/shapes.state")).is_file());
+        ensure(sb.compiled()).is(vec!["src/shapes.crm", "src/tool/main.cr"]);
+        ensure(sb.path("geo/build/debug/modules/shapes.state")).is_a_file();
     }
     fn git(dir: &Path, args: &[&str]) -> String {
         let out = Command::new("git")
@@ -506,8 +499,8 @@ exit 0
             .current_dir(dir)
             .output()
             .unwrap();
-        assert!(out.status.success(), "git {args:?}: {}", stderr(&out));
-        String::from_utf8_lossy(&out.stdout).trim().to_string()
+        let text = ensure(out).named(format!("git {args:?}")).succeeds().stdout().into_value();
+        text.trim().to_string()
     }
 
     #[test]
@@ -538,22 +531,22 @@ exit 0
         );
         sb.crepe_ok("app", &["build"]);
         let lock = fs::read_to_string(sb.path("app/crepe.lock")).unwrap();
-        assert!(lock.contains(&format!("rev = \"main\"\ncommit = \"{first}\"")), "{lock}");
-        assert!(sb.path("home/git").read_dir().unwrap().count() == 1);
+        ensure(lock).contains(format!("rev = \"main\"\ncommit = \"{first}\""));
+        ensure(sb.path("home/git").read_dir().unwrap().count()).named("cached clones").is(1);
 
         // A new upstream commit (body-only) is ignored until `crepe update`.
         sb.write("gdep/src/lib.crm", &source(&["module gdep;", "export int g(void);", "// two"]));
         git(&repo, &["commit", "--quiet", "-am", "two"]);
         let second = git(&repo, &["rev-parse", "HEAD"]);
         sb.crepe_ok("app", &["build"]);
-        assert!(sb.compiled().is_empty(), "{:?}", sb.calls());
+        ensure(sb.compiled()).named("modules compiled after an ignored upstream commit").is_empty();
 
         sb.crepe_ok("app", &["update"]);
         let lock = fs::read_to_string(sb.path("app/crepe.lock")).unwrap();
-        assert!(lock.contains(&second), "{lock}");
+        ensure(lock).contains(second);
         sb.crepe_ok("app", &["build"]);
         let compiled = sb.compiled();
-        assert_eq!(compiled.len(), 1, "only the dependency rebuilds: {compiled:?}");
-        assert!(compiled[0].ends_with("src/lib.crm"), "{compiled:?}");
+        ensure(compiled.len()).named("modules compiled (only the dependency)").is(1);
+        ensure(compiled[0].as_str()).ends_with("src/lib.crm");
     }
 }

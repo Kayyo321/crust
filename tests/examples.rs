@@ -11,6 +11,7 @@
 // - A folder with .crm files or an expect.stdout is one program: all its
 //   .c, .cr, and .crm files compile together.
 // - Otherwise each file is its own program, with output in <name>.stdout.
+use ensure::*;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -166,7 +167,9 @@ fn every_example_builds_and_runs() {
         .filter(|p| p.is_dir())
         .collect();
     dirs.sort();
-    assert!(dirs.len() >= 13);
+    ensure(dirs.len()).named("example folders").is_at_least(13);
     let failures: Vec<String> = dirs.iter().filter_map(|d| check_example(d).err()).collect();
-    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+    if !failures.is_empty() {
+        panic!("{} examples failed:\n\n{}", failures.len(), failures.join("\n\n"));
+    }
 }

@@ -148,6 +148,6 @@ ensure failed: exit code
 - `is_some`, `is_ok`, `is_err`, `panics`, `stdout`, and `stderr` continue the chain with what they unwrapped: the inner value, the panic message, or the stream as text.
 - A failed process check shows the exit status and both streams, so the test needs no message of its own.
 - `.named("what")` heads the failure message. Use it when the value is not obvious from the line.
-- Use `ensure` for assertions in Rust tests. `assert!` stays fine inside the library code of a test helper that already uses it, but new checks in tests use `ensure`.
+- New Rust tests use `ensure`. The integration tests in `tests/` and `crepe/tests/` already do. Unit tests next to the code still use `assert!`, and move over when they are next touched.
 - The `ensure` crate has no dependencies and is never part of `crust` or `crepe` themselves.
 - Test the checks themselves in `ensure/tests/`. A new check needs a passing case and a failing case that matches its message.

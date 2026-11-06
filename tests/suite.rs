@@ -11,6 +11,7 @@
 // - `// args: ...` on a line passes extra flags to crust.
 // Run-pass programs run under valgrind's leak checker when it is installed
 // (set CRUST_TEST_VALGRIND=0 to skip), so a leak fails the test (G-LEAK).
+use ensure::*;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -200,7 +201,7 @@ fn run_dir(sub: &str) {
         .filter(|p| p.is_dir() || is_source(p))
         .collect();
     cases.sort();
-    assert!(!cases.is_empty(), "no test cases in tests/{sub}");
+    ensure(cases.len()).named(format!("test cases in tests/{sub}")).is_above(0);
     let mut failures = Vec::new();
     for (i, c) in cases.iter().enumerate() {
         let name = format!("{}-{i}", sub.replace('/', "-"));
@@ -255,13 +256,12 @@ fn every_soundness_case_names_its_guarantee() {
             let p = c.unwrap().path();
             let text: String =
                 all_files(&p).iter().filter_map(|f| std::fs::read_to_string(f).ok()).collect();
-            assert!(
-                ["G-UAF", "G-DF", "G-LEAK", "G-OOB", "G-UNINIT", "G-ALIAS"]
-                    .iter()
-                    .any(|g| text.contains(&format!("guarantee: {g}"))),
-                "{} has no `guarantee: G-...` tag",
-                p.display()
-            );
+            let names_a_guarantee = ["G-UAF", "G-DF", "G-LEAK", "G-OOB", "G-UNINIT", "G-ALIAS"]
+                .iter()
+                .any(|g| text.contains(&format!("guarantee: {g}")));
+            ensure(names_a_guarantee)
+                .named(format!("{} has a `guarantee: G-...` tag", p.display()))
+                .is_true();
         }
     }
 }
@@ -280,11 +280,9 @@ fn every_test_file_has_the_header() {
                 Some("c" | "h" | "cr" | "hr" | "crm" | "rs")
             ) {
                 let t = std::fs::read_to_string(&p).unwrap();
-                assert!(
-                    t.starts_with(header),
-                    "{} does not start with the file header",
-                    p.display()
-                );
+                ensure(t.starts_with(header))
+                    .named(format!("{} starts with the file header", p.display()))
+                    .is_true();
             }
         }
     }
