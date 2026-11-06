@@ -6,7 +6,7 @@
 
 # Architecture
 
-Status: draft. The repo layout is a plan. Create directories in M0, not before. Related: [MEMORY_SAFETY.md](MEMORY_SAFETY.md), [ABI.md](ABI.md), [CLI.md](CLI.md).
+Status: implemented by Crust 0.1.0. The repo layout below is the real one. Related: [MEMORY_SAFETY.md](MEMORY_SAFETY.md), [ABI.md](ABI.md), [CLI.md](CLI.md).
 
 ## 1. Pipeline
 
@@ -58,7 +58,7 @@ Stages after the AST never print. They return diagnostics to the driver.
 - `crust --explain CRnnnn` prints the long form for each code.
 - The safety analyses report the two sites involved in an error.
 
-## 4. Repo layout (planned for M0)
+## 4. Repo layout
 
 ```
 src/
@@ -74,9 +74,9 @@ src/
   abi/        target layouts and calling conventions
   modules/    module graph, import resolution, .crmi reading and writing
 crepe/        crepe entry point and dependency resolution (separate binary)
-lib/          minimal runtime and standard library in Crust
-tests/        compile_fail/, run_pass/, soundness/, conformance/, abi/
-tools/        style check, header check, coverage report
+lib/include/  freestanding C headers that ship with crust (stddef.h, stdarg.h, ...)
+tests/        compile_fail/, run_pass/, modules/, pairs/, soundness/, abi/, interface/
+tools/        check_style (header and naming check)
 docs/         this documentation
 ```
 
@@ -84,9 +84,11 @@ Modules depend downward only: `driver` → everything; `sema` must not depend on
 
 ## 5. Implementation language
 
-**(open, D-019).** Proposed: Rust, bootstrapped first, with self-hosting in Crust as a later goal. `.gitignore` is a Cargo template, which suggests Rust was already the intent. If Rust is chosen, the naming rules in [CODE_STYLE.md](CODE_STYLE.md) need the lint allowances listed there.
+Rust (D-019), as one Cargo workspace with two binaries, `crust` and `crepe`. Self-hosting in Crust is a later goal. The naming rules in [CODE_STYLE.md](CODE_STYLE.md) need the lint allowances in the root `Cargo.toml`. The compiler has no crate dependencies.
 
-The LLVM binding is also open (D-024). Options: the LLVM C API directly, or a Rust wrapper over it. Either way, the compiler pins one LLVM major version.
+LLVM 18 (D-024). `src/codegen` writes textual LLVM IR, and the driver runs LLVM 18's `clang` to turn it into objects and to link. Building crust needs no LLVM libraries. The IR stays inside LLVM's stable textual format, so the pin is one major version.
+
+Each `src/` directory is a Rust module. The stages communicate through plain data: tokens, the AST (`parse::ast`), the typed IR (`sema::tir`), CrIR (`crir`), and LLVM IR text. Diagnostics go to a sink that the driver renders.
 
 ## 6. Build outputs
 
@@ -106,7 +108,7 @@ Crust knows about modules, interface files, include paths, and link paths. It do
 
 ## 8. External dependencies
 
-- LLVM (exact major version pinned, D-024)
+- LLVM 18 and its `clang` (D-024)
 - A system linker (`cc`, `ld`, or `lld`)
 - A C library for the target (libc)
 - For tests: an existing C compiler, to compare ABI behavior against

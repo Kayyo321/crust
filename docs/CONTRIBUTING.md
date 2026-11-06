@@ -20,7 +20,13 @@ If your change touches the language, the ABI, or a safety rule, also read [LANGU
 
 ## Setup
 
-Not yet available. Setup steps arrive with milestone M0 and are written here then. Until then, there is nothing to build. You can still improve the design docs.
+You need:
+
+- Rust 1.85 or newer, with `rustfmt` and `clippy`
+- LLVM 18's `clang` (`clang-18` or `clang` on `PATH`, or set `CRUST_LLVM_CONFIG` to its `llvm-config`)
+- Optional: `valgrind`, so run-pass tests also check for leaks
+
+Then `cargo build --workspace` builds `target/debug/crust` and `target/debug/crepe`, and `cargo test --workspace` runs the PR gate. See [TESTING.md](TESTING.md) for the rest.
 
 ## What kind of change
 

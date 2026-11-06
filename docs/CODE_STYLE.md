@@ -121,6 +121,8 @@ The house naming rule conflicts with rustc's default lints. The crate root must 
 
 Also required: `#![deny(unsafe_op_in_unsafe_fn)]`, and the Clippy lint `undocumented_unsafe_blocks` set to `deny`.
 
+These are set in the root `Cargo.toml` under `[workspace.lints]`, not as crate attributes: an inner attribute cannot follow the `/** */` file header, which rustc reads as an outer doc comment. For the same reason `unused_doc_comments` is allowed, and `rustfmt.toml` turns off import and module reordering, which would move the header. `clippy::enum_variant_names` is allowed because enumerators carry their enum's name. Name a module so it does not collide with a snake_case type (for example `symbols`, not `sym`).
+
 ### Crust (`.cr`, `.hr`, `.crm` files, tests, and `lib/`)
 
 - Prefer `let` without a type annotation when the type is obvious from the initializer.

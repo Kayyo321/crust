@@ -6,7 +6,7 @@
 
 # Command-line tools
 
-Status: draft. Flags are proposed. The stable interface starts at 1.0. Related: [ARCHITECTURE.md](ARCHITECTURE.md), [ABI.md](ABI.md).
+Status: implemented by Crust 0.1.0. Flags can still change before 1.0, where the stable interface starts. Related: [ARCHITECTURE.md](ARCHITECTURE.md), [ABI.md](ABI.md).
 
 Two binaries:
 
@@ -19,7 +19,11 @@ Two binaries:
 crust [options] <input>...
 ```
 
-Input files are `.c` and `.h` (C), `.cr` (Crust source), `.hr` (Crust headers, included rather than compiled alone), and `.crm` (Crust modules, see MODULES.md). The mode is chosen by extension unless `--std` says otherwise (see LANGUAGE.md, section 2).
+Input files are `.c` (C), `.cr` (Crust source), and `.crm` (Crust modules, see MODULES.md). `.h` and `.hr` headers are included, not compiled alone. `.o`, `.a`, and `.so` inputs are passed to the linker, as with `cc` (D-039). The mode is chosen by extension unless `--std` says otherwise (see LANGUAGE.md, section 2).
+
+Several inputs compile together: modules are ordered so each comes after the modules it imports, and the results are linked into one output. With `-c`, `--emit=asm`, `--emit=llvm-ir`, or `--emit=interface`, each input gets its own output; `-o` then needs a single input.
+
+`crust -c x.crm -o dir/x.o` also writes `dir/<module>.crmi`. Same-package imports resolve against the inputs, then against `.crmi` files in the directory of `-o` (MODULES.md, section 7).
 
 ### Output
 
@@ -50,8 +54,8 @@ Input files are `.c` and `.h` (C), `.cr` (Crust source), `.hr` (Crust headers, i
 | Flag | Meaning |
 |---|---|
 | `-O0` … `-O3`, `-Os` | Optimization level. Default `-O0`. |
-| `-g` | Debug info. Enables the debug sanitizers in LLVM passes. |
-| `--target=<triple>` | LLVM target triple. Default: host. |
+| `-g` | Debug info. Enables AddressSanitizer and LeakSanitizer when clang's sanitizer runtime is installed. |
+| `--target=<triple>` | LLVM target triple. 0.1.0 supports `x86_64-pc-linux-gnu` only (D-044). |
 | `-fPIC` | Position-independent code |
 
 ### Paths and linking
@@ -97,8 +101,8 @@ crepe <command> [options]
 | `crepe add <name>[@<version>]` | Add a dependency. `--path <dir>` and `--git <url> [--rev <rev>]` are also accepted. |
 | `crepe remove <name>` | Remove a dependency |
 | `crepe build [--release] [--target <name>]` | Build the package and its dependencies, or only the target named in `crepe.toml` |
-| `crepe run [-- <args>]` | Build and run the binary |
-| `crepe test` | Build and run tests |
+| `crepe run [--release] [--target <name>] [-- <args>]` | Build and run a binary (D-045) |
+| `crepe test` | Build and run the `[[test]]` targets. Each passes if it exits 0. |
 | `crepe check` | Type- and safety-check without generating code |
 | `crepe fetch` | Download dependencies named in the lockfile |
 | `crepe update [<name>]` | Re-resolve dependencies and rewrite the lockfile |
@@ -135,7 +139,11 @@ src/
 
 ### Build targets
 
-Declared in `crepe.toml` as `[[bin]]` and `[[lib]]` tables. Each names a `root` (a `.crm` module), or lists `sources` (old-school `.cr` files) with `include` directories for `.hr` headers. Modules are shared between targets. See [MODULES.md](MODULES.md), section 7.
+Declared in `crepe.toml` as `[[bin]]`, `[[lib]]`, and `[[test]]` tables. Each names a `root` (a `.crm` module), or lists `sources` (old-school `.cr` files) with `include` directories for `.hr` headers. Modules are shared between targets. See [MODULES.md](MODULES.md), section 7.
+
+Without target tables, `src/main.crm` is a binary and `src/lib.crm` a library, both named after the package. A `[[lib]]` builds `lib<name>.a` and the header `include/<name>.h`.
+
+crepe calls `crust` from the same directory as `crepe`, or `$CRUST` if it is set, or `crust` on `PATH`.
 
 ### Lockfile: `crepe.lock`
 
@@ -155,10 +163,11 @@ build/
 | Variable | Meaning |
 |---|---|
 | `CRUST_HOME` | Where `crepe` keeps its cache. Default: `~/.crepe`. |
-| `CRUST_LLVM_CONFIG` | Path to `llvm-config`, if it is not on `PATH`. |
+| `CRUST_LLVM_CONFIG` | Path to `llvm-config`. crust uses the `clang` in its `--bindir`. Without it, crust runs `clang-18`, then `clang`, from `PATH`. |
+| `CRUST` | The `crust` binary that crepe runs. |
 
 ## 4. Open questions
 
-- Manifest name and whether it is `crepe.toml` (D-025).
 - Workspaces: several packages in one repository, sharing one lockfile. Not designed yet.
-- Whether `crepe` supports editions, so the language can change without breaking old packages. Not decided.
+- Whether `crepe` supports editions, so the language can change without breaking old packages. Not decided (D-027).
+- A registry (D-043), and packages with both `src/main.crm` and `src/lib.crm` (D-047).

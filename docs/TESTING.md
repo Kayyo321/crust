@@ -10,7 +10,20 @@ Status: draft. Principles: tests prove the guarantees, feedback stays fast, and 
 
 ## 1. Commands
 
-Not yet available. There is no build system until milestone M0. When M0 lands, this section is filled in with the real commands for: build, fast tests, full tests, coverage, and style checks. Until then, do not guess commands.
+Run from the repository root. Prerequisites are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+| Task | Command |
+|---|---|
+| Build `crust` and `crepe` | `cargo build --workspace` |
+| Fast tests (unit tests only) | `cargo test --workspace --lib --bins` |
+| Full tests (the PR gate) | `cargo test --workspace` |
+| One suite | `cargo test --test suite`, `--test abi`, `--test interface` |
+| Style check | `tools/check_style` |
+| Formatting | `cargo fmt --all --check` |
+| Lints | `cargo clippy --all-targets --workspace -- -D warnings` |
+| Update the golden interface | `CRUST_BLESS=1 cargo test --test interface`, then review the diff |
+
+The suite runs every run-pass program under valgrind's leak checker when `/usr/bin/valgrind` exists. Set `CRUST_TEST_VALGRIND=0` to skip it. Coverage is not measured yet; the floors in section 4 start at M2.
 
 ## 2. Test kinds
 
@@ -26,6 +39,8 @@ Not yet available. There is no build system until milestone M0. When M0 lands, t
 | Fuzzing | `fuzz/` | Lexer, parser, and checker never crash or hang | Nightly, time-boxed |
 | Full sanitizer run | all run-pass | ASan, UBSan, and LSan on everything | Nightly |
 
+The runner is `tests/suite.rs`. A test case is a file, or a directory whose `.c`, `.cr`, and `.crm` files compile together. ABI tests are in `tests/abi.rs`; interface golden and rebuild tests are in `tests/interface.rs`.
+
 Compile-fail tests mark the line that should be flagged with a comment, and name the code:
 
 ```c
@@ -34,7 +49,7 @@ let b = a;
 a[0] = 1;   //~ ERROR CR0382
 ```
 
-Each test file starts with the file header from CODE_STYLE.md. Expected output lives beside the input, with the same name and a `.stdout` or `.diag` extension.
+Each test file starts with the file header from CODE_STYLE.md. Expected output lives beside the input, with the same name and a `.stdout` extension (`expect.stdout` in a directory case). A `// args: ...` line passes extra flags to crust. Soundness cases name their guarantee with a `// guarantee: G-...` line.
 
 Test names are `snake_case` and describe the expected result: `rejects_use_after_move`, `accepts_reborrow_after_last_use`.
 

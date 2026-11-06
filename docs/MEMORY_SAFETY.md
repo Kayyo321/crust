@@ -6,7 +6,7 @@
 
 # Memory safety in Crust
 
-Status: draft. This document is the contract. If the compiler behaves differently, the compiler has a soundness bug. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md).
+Status: draft; implemented by Crust 0.1.0 as described, with the limits noted below. This document is the contract. If the compiler behaves differently, the compiler has a soundness bug. Related: [LANGUAGE.md](LANGUAGE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DECISIONS.md](DECISIONS.md).
 
 ## 1. The guarantee
 
@@ -21,7 +21,7 @@ For **checked code**, Crust guarantees that a running program never:
 | G-UNINIT | Reads a value that was never initialized | Definite-initialization analysis |
 | G-ALIAS | Mutates a value while a shared borrow of it is live | Borrow checking |
 
-Checked code is every `.c`, `.cr`, or `.crm` function body outside `unsafe`, compiled without `--unchecked`.
+Checked code is every `.c`, `.cr`, or `.crm` function body outside `unsafe`, compiled without `--unchecked`. In `.c` files, the operations that need `unsafe` in Crust files are allowed and are outside the guarantee (D-037); see section 2.
 
 Planned, not in the first guarantee set: G-NULL (dereference of a possibly null checked pointer), and G-RACE (data races between threads, after M7).
 
@@ -33,6 +33,7 @@ The guarantee holds only if the **trusted base** holds. The items below are outs
 - **C code linked in.** Crust cannot check the body of a C function. Calling it is an `unsafe` operation unless declared `[[crust::safe]]`.
 - **Module contracts.** A safe export must uphold the invariants its module relies on. The checker cannot verify that. See [MODULES.md](MODULES.md), section 9.
 - **Unchecked mode.** `--unchecked` turns checks off for a translation unit.
+- **C-mode operations.** In `.c` and `.h` files, calling C functions, dereferencing pointers of unknown origin, pointer arithmetic, and unrelated casts are allowed without `unsafe` (D-037). The guarantee covers the rest of a C file's checks, not those operations.
 - **The compiler and LLVM.** A miscompilation of checked code is a soundness bug. It is not an exception to the guarantee.
 - **Hardware, OS, libc, and the linker.**
 - **Program exit and program-lifetime data.** Memory owned by statics, and memory still allocated when `main` returns, is not a leak. See section 4.
@@ -60,7 +61,9 @@ The guarantee holds only if the **trusted base** holds. The items below are outs
 3. Checked code has no forget-like operation. Ownership can end only by a move, a drop, or a call to a function that consumes it.
 4. Shared ownership (a reference-counted type) is not in v1. When it is added, cycles through it are either rejected or allowed only inside `unsafe`.
 
-So in checked code, every allocation is released or moved on every path. Exceptions: memory owned by statics or still live when `main` returns, and memory leaked inside `unsafe`. The soundness corpus checks this with LeakSanitizer on the run-pass tests.
+So in checked code, every allocation is released or moved on every path.
+
+Definite initialization (G-UNINIT) follows Rust for locals that are read whole. A non-owned local whose address is taken, or that is written element by element or through a union member, is zero-filled when its function starts, and such writes count as initialization (D-038). Its bytes are never indeterminate, so C idioms such as `scanf("%d", &x)` and filling an array in a loop stay valid. Exceptions: memory owned by statics or still live when `main` returns, and memory leaked inside `unsafe`. The soundness corpus checks this with LeakSanitizer on the run-pass tests.
 
 ## 5. Raw pointers
 
@@ -71,11 +74,20 @@ C pointers `T *` are the hardest part of checked code. Crust tracks where a poin
 
 This keeps ordinary C code checked where the origin is visible, and forces an explicit `unsafe` where it is not.
 
+How 0.1.0 tracks pointers (D-041):
+
+- Every value that can hold a pointer carries a set of origins: the locals it may point into, the lifetime regions of borrowed parameters, static data, or unknown memory. The sets follow assignments, struct members, calls, and stores through tracked pointers.
+- A pointer to a local keeps that local borrowed while any live value may hold it. The local cannot be moved out of or go out of scope during that time (CR0505, CR0597). Unlike a `ref` borrow, a raw pointer does not stop reads or writes of the local; aliasing raw pointers is C, not a memory error.
+- A pointer to a local cannot be stored in a global (CR0521), or returned (CR0515). In Crust files it cannot be stored through a pointer the checker does not track (CR0521).
+- Dereferencing a raw pointer is checked only when every origin is known. A parameter, a `malloc` result, the result of pointer arithmetic, or a pointer read from memory the checker does not track needs `unsafe` (CR0133).
+
 ## 6. Bounds
 
 - Array indexes with a constant in range: no check.
 - Indexes the compiler can prove in range: no check. Proof uses the same analysis as borrowing, and LLVM's own range analysis can help.
 - Everything else: a runtime check that traps on failure.
+- Slices are always checked against their length.
+- Raw pointers have no bounds. Indexing one is pointer arithmetic and needs `unsafe` in Crust code.
 
 A trap prints a diagnostic with the source location and aborts. There is no unwinding (D-009). Overhead is measured on the benchmark set from M5.
 
@@ -92,6 +104,8 @@ Checks run in two places. The split is deliberate. See [ARCHITECTURE.md](ARCHITE
 3. Provide sanitizer-style checks in debug builds (`-g` builds).
 
 A pass failure in step 2 is a compiler bug, and it blocks the build.
+
+In 0.1.0, bounds checks and division-by-zero checks are inserted when the AST is lowered to CrIR, so the analyses see them, and LLVM receives them as ordinary branches to a trap. Step 2 is not implemented yet. With `-g`, AddressSanitizer and LeakSanitizer are enabled when clang's sanitizer runtime is installed. The test suite also runs every run-pass program under valgrind's leak checker when it is available.
 
 ## 8. Diagnostics
 

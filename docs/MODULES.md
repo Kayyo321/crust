@@ -6,7 +6,7 @@
 
 # Modules
 
-Status: draft. **Accepted:** `.crm` modules are the modern way to organize Crust projects. `.cr` source with `.hr` headers stays for old-school code (D-020). The details below are **Proposed** unless a DECISIONS.md entry says otherwise (D-028 to D-036). Related: [LANGUAGE.md](LANGUAGE.md), [ABI.md](ABI.md), [ARCHITECTURE.md](ARCHITECTURE.md), [CLI.md](CLI.md), [DECISIONS.md](DECISIONS.md).
+Status: draft; implemented by Crust 0.1.0. **Accepted:** `.crm` modules are the modern way to organize Crust projects. `.cr` source with `.hr` headers stays for old-school code (D-020), and the details below (D-028 to D-036). Proposed refinements: D-039 and D-046. Related: [LANGUAGE.md](LANGUAGE.md), [ABI.md](ABI.md), [ARCHITECTURE.md](ARCHITECTURE.md), [CLI.md](CLI.md), [DECISIONS.md](DECISIONS.md).
 
 ## 1. Three kinds of Crust file
 
@@ -20,7 +20,7 @@ Modules are the modern way to interlink Crust files. A module's interface is gen
 
 A `.cr` and `.hr` pair is the old-school way. The header is written by hand and included as text. Macros in it reach every file that includes it, and each `.cr` file re-reads it. Pairs stay supported for existing code and for teams that want that style.
 
-The module syntax follows TypeScript:
+The module syntax follows TypeScript. The reserved words in every Crust file are `let`, `mut`, `unsafe`, `module`, `export`, `import`, and `ref` (D-012, D-018).
 
 - `module` names the file's module. It comes first.
 - `export` makes a declaration visible to importers.
@@ -131,6 +131,7 @@ let total = core::add(1, 2);
 - An imported name refers to every export of that name, in every namespace. A struct is a tag, so `import { point }` lets you write `struct point`, as in section 2.
 - Macros are never imported (section 8).
 - Two imports of the same name, or an import and a local declaration of the same name, is an error at the second one.
+- Exporting an enum exports its enumerators too, as constants (D-046). Import them by name, like any other export, or reach them through a namespace import: `case colors::ColorRed:`.
 - A `.cr` file may import modules under the same rules. A `.cr` file cannot export, because it has no module name.
 
 ## 6. Interfaces: the header replacement
@@ -150,7 +151,8 @@ Interface files are binary and versioned. `crust --emit=interface` writes one. `
 ## 7. Building modules and targets
 
 - crepe finds the `.crm` modules in a package by scanning `src/`, and reads the build targets from `crepe.toml`. It builds the module graph from the imports.
-- crust compiles one module at a time, in dependency order. Each module produces an object file and a `.crmi` file.
+- crust compiles one module at a time, in dependency order. Each module produces an object file and a `.crmi` file. `crust -c src/x.crm -o dir/x.o` writes `dir/<module>.crmi` next to the object, and rewrites it only if it changed (D-039).
+- crust resolves a same-package import `"name"` against the modules given in the same invocation, then against `<module>.crmi` in the directory of `-o`. A dependency import `"package/name"` reads `<dir>/<name>.crmi` from `--extern package=<dir>`, and `"package"` reads `<dir>/<package>.crmi`.
 - **No import cycles (D-031).** A cycle is an error in v1. Move the shared declarations into a third module.
 - **Module-level initializers are constant (D-031).** Every module-level variable, including `constexpr` and `let`, takes a constant initializer. Nothing runs at startup on behalf of a module, so importing a module never runs code and there is no initialization order to get wrong.
 - **Module-level `let mut` needs `unsafe`.** Mutable module state can be declared. Reading or writing it requires `unsafe` until thread-safety rules land (M8).
@@ -222,6 +224,8 @@ Exports come in two kinds (D-034, which amends D-003):
     return a + b;
 }
 ```
+
+`crust --emit=header` (or `--emit-header=<path>` next to another output) writes a C23 header with the `[[crust::c_abi]]` exports and the struct and enum definitions their signatures need. crepe writes it to `build/<profile>/include/<lib>.h` for a `[[lib]]` target.
 
 See [ABI.md](ABI.md) for the layout and calling rules.
 

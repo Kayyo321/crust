@@ -10,14 +10,30 @@ The C compiler with guaranteed memory safety, by replicating the Rust language's
 
 Crust compiles C23 (ISO/IEC 9899:2024) plus a small set of additions (`let`, lifetimes, `unsafe`, and `.crm` modules) through LLVM into binaries and libraries. Checked code cannot leak memory, use freed memory, double-free, or overflow a buffer. Full C ABI compatibility means existing C code links and runs unchanged. Crust projects are organized in modules (`.crm`), which need no header files. Older source and header pairs (`.cr` and `.hr`) are supported too.
 
-**Status: pre-alpha.** This repository holds design documents only. There is no compiler yet.
+**Status: 0.1.0, pre-alpha.** The compiler and the package manager work for x86-64 Linux. The language and flags can still change before 1.0.
 
 | Tool | Purpose |
 |---|---|
 | `crust` | Compiler: C23 + Crust to binaries and libraries |
 | `crepe` | Package manager for Crust libraries, like cargo |
 
-## Example (illustrative syntax, not final)
+## Quick start
+
+You need Rust 1.85 or newer and LLVM 18's `clang`.
+
+```bash
+cargo build --workspace
+```
+
+```bash
+target/debug/crepe new hello && cd hello && ../target/debug/crepe run
+```
+
+```bash
+target/debug/crust hello.c -o hello
+```
+
+## Example
 
 `src/app.crm` imports from `src/geometry.crm`, which exports `point` and `distance`. The example needs no header file.
 
