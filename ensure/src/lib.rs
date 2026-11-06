@@ -7,7 +7,7 @@
 //
 //     ensure(exit_code).named("exit code").is(0);
 //     ensure(stderr).cannot_contain("panicked");
-//     ensure(output.lines()).has_len(3);
+//     ensure(command.output().unwrap()).succeeds().stdout().contains("ok");
 //     ensure(found).is_some().is("geometry");
 //
 // `ensure(value)` wraps a value in a `subject`. Each check reads as a sentence, panics with
@@ -19,6 +19,7 @@ mod ordering;
 mod report;
 mod shape;
 mod subjects;
+mod system;
 mod text;
 
 pub use items::{holds, measured};

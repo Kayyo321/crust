@@ -122,6 +122,7 @@ ensure(stderr).cannot_contain("panicked");
 ensure(lines).has_len(3).contains("Compiling util");
 ensure(found).is_some().is("geometry");
 ensure(|| divide(1, 0)).panics().contains("zero");
+ensure(Command::new(crust).output().unwrap()).succeeds().stdout().contains("crust");
 ```
 
 A failed check panics at the line of the test, and shows what it wanted and what it found:
@@ -139,10 +140,13 @@ ensure failed: exit code
 | Shape | `is_true()`, `is_false()`, `is_some()`, `is_none()`, `is_ok()`, `is_err()` |
 | Text | `starts_with(..)`, `ends_with(..)`, `contains(..)`, `cannot_contain(..)` |
 | Lists, sets, maps | `has_len(n)`, `is_empty()`, `cannot_be_empty()`, `contains(item)`, `cannot_contain(item)` |
+| Files | `exists()`, `cannot_exist()`, `is_a_file()`, `is_a_folder()` on anything path-like |
+| Processes | `succeeds()`, `fails()`, `exits_with(code)`, then `stdout()` or `stderr()` as text, on a `std::process::Output` |
 | Panics | `panics()`, `does_not_panic()` on a closure |
 
 - A passing check returns the subject, so checks chain: `ensure(n).is_above(1).is_below(9)`.
-- `is_some`, `is_ok`, `is_err`, and `panics` continue the chain with what they unwrapped: the inner value, or the panic message.
+- `is_some`, `is_ok`, `is_err`, `panics`, `stdout`, and `stderr` continue the chain with what they unwrapped: the inner value, the panic message, or the stream as text.
+- A failed process check shows the exit status and both streams, so the test needs no message of its own.
 - `.named("what")` heads the failure message. Use it when the value is not obvious from the line.
 - Use `ensure` for assertions in Rust tests. `assert!` stays fine inside the library code of a test helper that already uses it, but new checks in tests use `ensure`.
 - The `ensure` crate has no dependencies and is never part of `crust` or `crepe` themselves.
