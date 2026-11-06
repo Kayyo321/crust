@@ -1,0 +1,12 @@
+drop 100
+found
+drop 101
+drop 1
+drop 100
+drop 101
+drop 102
+drop 103
+drop 104
+not found
+drop 2
+drop 1

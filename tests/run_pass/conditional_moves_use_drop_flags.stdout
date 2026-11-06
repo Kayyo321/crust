@@ -1,0 +1,10 @@
+consume
+drop 10
+maybe ends
+maybe ends
+drop 10
+consume
+drop 20
+drop 21
+reinit ends
+drop 22

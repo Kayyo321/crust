@@ -1,0 +1,24 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module geometry;
+
+#include <math.h>
+
+export constexpr int MaxPoints = 1024;
+
+export struct point {
+    double x;
+    double y;
+};
+
+double square(double v) {
+    return v * v;
+}
+
+export double distance(struct point a, struct point b) {
+    unsafe {
+        // SAFETY: sqrt is a pure C function with no pointer arguments.
+        return sqrt(square(a.x - b.x) + square(a.y - b.y));
+    }
+}

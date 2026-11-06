@@ -1,0 +1,19 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module counter;
+
+[[crust::c_abi]] export int crust_add(int a, int b) {
+    return a + b;
+}
+
+[[crust::c_abi]] export long crust_sum(const int *values, unsigned long n) {
+    let mut total: long = 0;
+    unsafe {
+        // SAFETY: the C caller passes `n` valid ints at `values`.
+        for (unsigned long i = 0; i < n; i++) {
+            total += values[i];
+        }
+    }
+    return total;
+}

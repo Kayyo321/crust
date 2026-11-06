@@ -1,0 +1,7 @@
+inner scope ends
+drop 3
+consume
+drop 2
+main ends
+drop 1
+drop 4

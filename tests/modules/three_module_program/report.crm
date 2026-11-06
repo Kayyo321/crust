@@ -1,0 +1,15 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module report;
+
+#include <stdio.h>
+
+import { point, distance } from "geometry";
+
+export void print_distance(struct point a, struct point b) {
+    unsafe {
+        // SAFETY: the format specifier matches the double argument.
+        printf("distance %.1f\n", distance(a, b));
+    }
+}

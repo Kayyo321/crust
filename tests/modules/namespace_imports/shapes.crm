@@ -1,0 +1,26 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module shapes;
+
+export struct rect {
+    int w;
+    int h;
+};
+
+export typedef int area_t;
+
+export enum ShapeKind {
+    ShapeKindSquare,
+    ShapeKindWide,
+};
+
+export constexpr int Unit = 1;
+
+export area_t area(struct rect r) {
+    return r.w * r.h;
+}
+
+export enum ShapeKind classify(struct rect r) {
+    return r.w == r.h ? ShapeKindSquare : ShapeKindWide;
+}

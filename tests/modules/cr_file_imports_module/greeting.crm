@@ -1,0 +1,13 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module greeting;
+
+#include <stdio.h>
+
+export void greet(const char *name) {
+    unsafe {
+        // SAFETY: `name` is a valid string, and the format matches it.
+        printf("hello, %s\n", name);
+    }
+}

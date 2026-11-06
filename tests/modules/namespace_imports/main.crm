@@ -1,0 +1,20 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module main;
+
+#include <stdio.h>
+
+import * as shp from "shapes";
+
+int main(void) {
+    let r = (struct shp::rect){ .w = 3, .h = 4 };
+    shp::area_t a = shp::area(r);
+    let k = shp::classify(r);
+    let sq = (struct shp::rect){ .w = shp::Unit, .h = shp::Unit };
+    unsafe {
+        // SAFETY: the format specifiers match the int arguments.
+        printf("%d %d %d %d\n", a, k == shp::ShapeKindWide, shp::area(sq), shp::classify(sq) == shp::ShapeKindSquare);
+    }
+    return 0;
+}

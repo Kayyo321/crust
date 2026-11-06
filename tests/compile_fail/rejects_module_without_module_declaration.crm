@@ -1,0 +1,6 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+export int helper(void) {   //~ ERROR CR1402
+    return 1;
+}

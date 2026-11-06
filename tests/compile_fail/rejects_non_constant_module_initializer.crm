@@ -1,0 +1,10 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module config;
+
+int compute(void) {
+    return 4;
+}
+
+export let size = compute();   //~ ERROR CR1413

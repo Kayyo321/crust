@@ -1,0 +1,17 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module main;
+
+#include <stdio.h>
+
+import { add, minus, mul, neg, twice, sq } from "mathx";
+import * as mx from "mathx";
+
+int main(void) {
+    unsafe {
+        // SAFETY: the format specifiers match the int arguments.
+        printf("%d %d %d %d %d %d %d\n", add(2, 3), minus(9, 4), mul(6, 7), neg(5), twice(8), sq(3), mx::add(1, 1));
+    }
+    return 0;
+}
