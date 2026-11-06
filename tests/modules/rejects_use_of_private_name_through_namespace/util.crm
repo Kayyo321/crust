@@ -1,0 +1,12 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module util;
+
+int hidden(void) {
+    return 1;
+}
+
+export int shown(void) {
+    return hidden();
+}

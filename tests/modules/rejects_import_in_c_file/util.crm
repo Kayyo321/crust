@@ -1,0 +1,8 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module util;
+
+[[crust::c_abi]] export int helper(void) {
+    return 1;
+}

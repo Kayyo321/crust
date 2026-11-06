@@ -1,0 +1,10 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module main;
+
+import { limit } from "config";
+
+int main(void) {
+    return 0;
+}

@@ -1,0 +1,10 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module alpha;   //~ ERROR CR1407
+
+import { beta_value } from "beta";
+
+export int alpha_value(void) {
+    return 1;
+}

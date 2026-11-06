@@ -11,11 +11,16 @@ void tracker_drop(struct tracker *t);
     int id;
 };
 
+static int drop_count;
+static int drop_id_sum;
+
 void tracker_drop(struct tracker *t) {
     unsafe {
         // SAFETY: `t` points at the live tracker being dropped, and the
         // format specifier matches the int argument.
         printf("drop %d\n", t->id);
+        drop_count += 1;
+        drop_id_sum += t->id;
     }
 }
 
@@ -27,7 +32,7 @@ void consume(struct tracker t) {
     (void)t;
 }
 
-int main(int argc, char **argv) {
+int run(int argc, char **argv) {
     (void)argv;
     let mut t = make(1);
     if (argc > 0) {
@@ -35,4 +40,14 @@ int main(int argc, char **argv) {
         t = make(2);
     }
     return t.id - 2;
+}
+
+int main(int argc, char **argv) {
+    let status = run(argc, argv);
+    let mut wrong = 0;
+    unsafe {
+        // SAFETY: the counters are only touched on this single thread.
+        wrong = drop_count != 2 || drop_id_sum != 3;
+    }
+    return status != 0 || wrong;
 }

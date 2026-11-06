@@ -1,0 +1,6 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+#pragma once
+
+int area(ref int w, int h);

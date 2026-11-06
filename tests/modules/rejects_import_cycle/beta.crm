@@ -1,0 +1,10 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module beta;
+
+import { alpha_value } from "alpha";
+
+export int beta_value(void) {
+    return alpha_value() + 1;
+}

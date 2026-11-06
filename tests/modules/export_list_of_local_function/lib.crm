@@ -1,0 +1,10 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module lib;
+
+int twice(int a) {
+    return a * 2;
+}
+
+export { twice };

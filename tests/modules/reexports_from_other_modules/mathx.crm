@@ -1,0 +1,11 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module mathx;
+
+export { add, sub as minus } from "math_core";
+export * from "math_extra";
+
+export int twice(int a) {
+    return a * 2;
+}

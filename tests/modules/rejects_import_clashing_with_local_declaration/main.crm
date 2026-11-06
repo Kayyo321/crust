@@ -1,0 +1,14 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module main;
+
+import { helper } from "util";
+
+int helper(void) {   //~ ERROR CR1406
+    return 2;
+}
+
+int main(void) {
+    return helper() - 2;
+}

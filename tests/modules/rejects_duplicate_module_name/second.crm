@@ -1,0 +1,8 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module shared_name;   //~ ERROR CR1410
+
+export int two(void) {
+    return 2;
+}

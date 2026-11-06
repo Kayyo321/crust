@@ -1,0 +1,10 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module main;
+
+import * as u from "util";
+
+int main(void) {
+    return u::hidden();   //~ ERROR CR1405
+}

@@ -1,0 +1,8 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module api;
+
+[[crust::c_abi]] export int first(ref [int] values) {   //~ ERROR CR1412
+    return values.len > 0 ? values[0] : 0;
+}

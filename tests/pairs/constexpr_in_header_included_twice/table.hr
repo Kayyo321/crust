@@ -1,0 +1,8 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+#pragma once
+
+constexpr int Width = 4;
+
+int width_twice(void);

@@ -1,0 +1,12 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module config;
+
+export const int Base = 4;
+
+int compute(void) {
+    return 8;
+}
+
+export int limit = compute();   //~ ERROR CR1413

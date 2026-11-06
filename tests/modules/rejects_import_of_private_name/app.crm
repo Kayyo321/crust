@@ -1,0 +1,10 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module app;
+
+import { square } from "geometry";   //~ ERROR CR1405
+
+int main(void) {
+    return 0;
+}

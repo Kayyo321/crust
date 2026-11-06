@@ -1,0 +1,11 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+#pragma once
+
+#define Scale 3
+#define Clamp(v, hi) ((v) > (hi) ? (hi) : (v))
+
+#define MaxItems 4
+
+int scaled(int v);

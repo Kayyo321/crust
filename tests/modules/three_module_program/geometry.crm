@@ -3,6 +3,8 @@
 */
 module geometry;
 
+// args: -lm
+
 #include <math.h>
 
 export constexpr int MaxPoints = 1024;

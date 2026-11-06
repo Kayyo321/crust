@@ -11,11 +11,16 @@ void tracker_drop(struct tracker *t);
     int id;
 };
 
+static int drop_count;
+static int drop_id_sum;
+
 void tracker_drop(struct tracker *t) {
     unsafe {
         // SAFETY: `t` points at the live tracker being dropped, and the
         // format specifier matches the int argument.
         printf("drop %d\n", t->id);
+        drop_count += 1;
+        drop_id_sum += t->id;
     }
 }
 
@@ -39,9 +44,19 @@ int check(int v) {
     return 1;
 }
 
-int main(void) {
+int run(void) {
     check(-5);
     check(0);
     check(7);
     return 0;
+}
+
+int main(void) {
+    let status = run();
+    let mut wrong = 0;
+    unsafe {
+        // SAFETY: the counters are only touched on this single thread.
+        wrong = drop_count != 5 || drop_id_sum != 209;
+    }
+    return status != 0 || wrong;
 }

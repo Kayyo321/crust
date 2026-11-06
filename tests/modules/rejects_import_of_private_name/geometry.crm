@@ -1,0 +1,12 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+module geometry;
+
+double square(double v) {
+    return v * v;
+}
+
+export double area(double side) {
+    return square(side);
+}

@@ -1,0 +1,13 @@
+/**
+* Ko, (Baczynski-Bruce) 2026; Apache 2.0
+*/
+#pragma once
+
+struct counter {
+    int count;
+    int step;
+};
+
+struct counter counter_new(int step);
+void counter_tick(ref mut struct counter c);
+int counter_value(ref struct counter c);

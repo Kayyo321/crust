@@ -102,11 +102,9 @@ fn json_field<'a>(s: &'a str, key: &str) -> Option<&'a str> {
 /// Runs crust and returns the (file, line, code) of every error.
 fn errors_of(case: &Path, out_dir: &Path) -> (BTreeSet<(String, u32, String)>, String) {
     let mut c = Command::new(crust());
-    c.args(sources(case))
-        .arg("--error-format=json")
-        .arg("--emit=llvm-ir")
-        .arg("-o")
-        .arg(out_dir.join("out.ll"));
+    // Several inputs share one output only when linked; diagnostics stop the
+    // build before linking anyway.
+    c.args(sources(case)).arg("--error-format=json").arg("-o").arg(out_dir.join("prog"));
     if case.is_dir() {
         c.arg(format!("-I{}", case.display()));
     }
