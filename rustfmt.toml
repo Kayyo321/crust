@@ -1,0 +1,7 @@
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+# The file header is a `/** */` block that rustc reads as a doc comment on
+# the first item. Reordering items would move it, so reordering is off.
+max_width = 100
+use_small_heuristics = "Max"
+reorder_imports = false
+reorder_modules = false

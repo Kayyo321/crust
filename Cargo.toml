@@ -1,0 +1,53 @@
+# Ko, (Baczynski-Bruce) 2026; Apache 2.0
+
+[workspace]
+members = [".", "crepe"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+rust-version = "1.85"
+
+# House naming rules (docs/CODE_STYLE.md, section 7) conflict with rustc's defaults.
+# The file header is a `/** */` block, which rustc reads as a doc comment on the
+# first item, so the doc-comment lints that fire on it are allowed too.
+[workspace.lints.rust]
+non_camel_case_types = "allow"
+non_upper_case_globals = "allow"
+unused_doc_comments = "allow"
+unsafe_op_in_unsafe_fn = "deny"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "deny"
+empty_line_after_doc_comments = "allow"
+too_many_arguments = "allow"
+large_enum_variant = "allow"
+type_complexity = "allow"
+new_without_default = "allow"
+# Enumerators carry their enum name (docs/CODE_STYLE.md, section 2).
+enum_variant_names = "allow"
+
+[package]
+name = "crust"
+description = "The Crust compiler: C23 with Rust's memory-safety rules, through LLVM"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "crust"
+path = "src/lib.rs"
+
+[[bin]]
+name = "crust"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[profile.dev]
+opt-level = 1
