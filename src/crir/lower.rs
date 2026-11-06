@@ -531,7 +531,16 @@ impl builder<'_> {
             TExprNull => OperandConst(ConstNull(e.ty.ty)),
             TExprLoad(lv) => {
                 let p = self.place(lv);
-                if is_owned(lv.ty.ty) { OperandMove(p) } else { OperandCopy(p) }
+                if !is_owned(lv.ty.ty) {
+                    return OperandCopy(p);
+                }
+                // Move through a temporary, so a move error points at the
+                // moved expression rather than the whole statement.
+                let t = self.temp(e.ty, e.span);
+                self.owned_temps.retain(|x| *x != t);
+                self.assign(place::local(t), RvalueUse(OperandMove(p)), e.span);
+                self.owned_temps.push(t);
+                OperandMove(place::local(t))
             }
             TExprCast(CastKindFuncDecay, inner) if matches!(inner.kind, TExprGlobal(_)) => {
                 let TExprGlobal(g) = inner.kind else { unreachable!() };

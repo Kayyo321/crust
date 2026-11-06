@@ -528,11 +528,16 @@ impl preprocessor {
             return;
         }
         match n {
-            SymDefine => self.define(),
+            SymDefine => self.define(&name),
             SymUndef => {
                 let line = self.read_line();
-                if let Some(t) = line.first() {
-                    self.macros.remove(&t.text);
+                match line.first() {
+                    Some(t) if t.kind == TokenKindIdent => {
+                        self.macros.remove(&t.text);
+                    }
+                    _ => {
+                        diag::error("CR1002", name.span, "#undef needs a macro name");
+                    }
                 }
             }
             SymInclude => self.include(&hash, false),
@@ -608,7 +613,11 @@ impl preprocessor {
                 }
             }
             SymLine => {
-                self.read_line();
+                let line = self.read_line();
+                let e = self.expand_list(&line);
+                if !e.first().is_some_and(|t| t.kind == TokenKindNumber) {
+                    diag::error("CR1002", name.span, "#line needs a line number");
+                }
             }
             SymError | SymWarning => {
                 let line = self.read_line();
@@ -641,10 +650,10 @@ impl preprocessor {
         }
     }
 
-    fn define(&mut self) {
+    fn define(&mut self, directive: &token) {
         let line = self.read_line();
         let Some(name) = line.first() else {
-            diag::error("CR1002", span::dummy(), "#define needs a macro name");
+            diag::error("CR1002", directive.span, "#define needs a macro name");
             return;
         };
         if name.kind != TokenKindIdent {
@@ -679,6 +688,14 @@ impl preprocessor {
                     continue;
                 }
                 if t.kind == TokenKindIdent {
+                    if ps.contains(&t.text) {
+                        diag::error(
+                            "CR1002",
+                            t.span,
+                            format!("duplicate macro parameter `{}`", t.text),
+                        );
+                        return;
+                    }
                     if line.get(i).is_some_and(|n| n.is(SymEllipsis)) {
                         // GNU named variadic parameter: treat the name as __VA_ARGS__.
                         variadic = true;
@@ -712,6 +729,10 @@ impl preprocessor {
     }
 
     fn header_name(&mut self, line: Vec<token>, hash: &token) -> Option<(String, bool, span)> {
+        if line.is_empty() {
+            diag::error("CR1002", hash.span, "expected a header name after the directive");
+            return None;
+        }
         let line = if line.first().is_some_and(|t| t.kind == TokenKindString || t.is(SymLt)) {
             line
         } else {
@@ -1228,3 +1249,61 @@ const Predefined: &[(&str, &str)] = &[
     ("__FLT_EVAL_METHOD__", "0"),
     ("__FLT_RADIX__", "2"),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn expand(src: &str) -> String {
+        let id = diag::add_file(
+            PathBuf::from("t.c"),
+            "t.c".into(),
+            Rc::from(src),
+            crate::diag::FileKindC,
+        );
+        let toks = preprocessor::new(pp_options::default()).run_file(id);
+        let mut s = String::new();
+        for t in toks.iter().filter(|t| t.kind != TokenKindEof) {
+            if !s.is_empty() && t.has(FlagSpace) {
+                s.push(' ');
+            }
+            s.push_str(t.text.as_str());
+        }
+        s
+    }
+
+    #[test]
+    fn expands_object_and_function_macros() {
+        assert_eq!(
+            expand("#define N 4\n#define SQ(x) ((x)*(x))\nint a = SQ(N);"),
+            "int a = ((4)*(4));"
+        );
+    }
+
+    #[test]
+    fn stringizes_and_pastes() {
+        assert_eq!(
+            expand("#define S(x) #x\n#define C(a,b) a##b\nS(a + \"b\") C(x, 1)"),
+            "\"a + \\\"b\\\"\" x1"
+        );
+    }
+
+    #[test]
+    fn stops_recursive_expansion() {
+        // C23 6.10.5.6, example 3 (shortened).
+        assert_eq!(expand("#define f(a) a*g\n#define g(a) f(a)\nf(2)(9)"), "2*9*g");
+    }
+
+    #[test]
+    fn handles_va_args_and_va_opt() {
+        let out =
+            expand("#define F(fmt, ...) p(fmt __VA_OPT__(,) __VA_ARGS__)\nF(\"a\") F(\"b\", 1, 2)");
+        assert_eq!(out, "p(\"a\") p(\"b\", 1, 2)");
+    }
+
+    #[test]
+    fn evaluates_conditionals() {
+        let src = "#define A 2\n#if A > 1 && defined(A) && !defined B\nyes\n#elif 1\nno\n#else\nno\n#endif\n#ifdef B\nno\n#endif";
+        assert_eq!(expand(src), "yes");
+    }
+}

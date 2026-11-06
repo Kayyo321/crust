@@ -211,9 +211,9 @@ impl sema<'_> {
                     break;
                 }
                 cur.pos += 1;
-                let Some((pe, sub_ty, idx)) = self.designate(ty, &desig[0]) else { continue };
-                let p = elem_path(path, pe);
-                self.init_designated(sub_ty, &p, &desig[1..], init);
+                let Some((pes, sub_ty, idx)) = self.designate(ty, &desig[0]) else { continue };
+                let mut p = path.to_vec();
+                p.extend(pes);
                 let mut tmp = Vec::new();
                 self.init_designated_into(sub_ty, &p, &desig[1..], init, &mut tmp);
                 out.extend(tmp);
@@ -265,15 +265,6 @@ impl sema<'_> {
         max
     }
 
-    fn init_designated(
-        &mut self,
-        _ty: qual_type,
-        _path: &[PathElem],
-        _rest: &[Designator],
-        _init: &Initializer,
-    ) {
-    }
-
     fn init_designated_into(
         &mut self,
         ty: qual_type,
@@ -286,23 +277,46 @@ impl sema<'_> {
             self.init_object(ty, path, init, out);
             return;
         }
-        let Some((pe, sub, _)) = self.designate(ty, &rest[0]) else { return };
-        let p = elem_path(path, pe);
+        let Some((pes, sub, _)) = self.designate(ty, &rest[0]) else { return };
+        let mut p = path.to_vec();
+        p.extend(pes);
         self.init_designated_into(sub, &p, &rest[1..], init, out);
     }
 
     /// Resolves one designator against `ty`: the path step, the subobject
     /// type, and the subobject's position.
-    fn designate(&mut self, ty: qual_type, d: &Designator) -> Option<(PathElem, qual_type, u64)> {
+    fn designate(
+        &mut self,
+        ty: qual_type,
+        d: &Designator,
+    ) -> Option<(Vec<PathElem>, qual_type, u64)> {
         match (d, ty.kind()) {
             (DesignatorField(name, sp), TypeKindRecord(r)) => {
-                let rd = record(r);
-                let (subs, _) = self.subobjects(ty);
-                let _ = subs;
-                for (i, f) in rd.fields.iter().enumerate() {
-                    if f.name == Some(*name) {
-                        return Some((PathElemField(r, i as u32), f.ty.with(ty.quals), i as u64));
+                // Members of anonymous structs and unions are found through
+                // them, so the path can have several steps.
+                fn find(r: u32, name: sym) -> Option<Vec<(u32, u32)>> {
+                    let rd = record(r);
+                    for (i, f) in rd.fields.iter().enumerate() {
+                        if f.name == Some(name) {
+                            return Some(vec![(r, i as u32)]);
+                        }
+                        if f.name.is_none() {
+                            if let TypeKindRecord(inner) = f.ty.kind() {
+                                if let Some(mut p) = find(inner, name) {
+                                    p.insert(0, (r, i as u32));
+                                    return Some(p);
+                                }
+                            }
+                        }
                     }
+                    None
+                }
+                if let Some(steps) = find(r, *name) {
+                    let top = steps[0].1 as u64;
+                    let (lr, li) = *steps.last().unwrap();
+                    let fty = record(lr).fields[li as usize].ty.with(ty.quals);
+                    let pes = steps.iter().map(|(rr, ii)| PathElemField(*rr, *ii)).collect();
+                    return Some((pes, fty, top));
                 }
                 diag::error(
                     "CR1311",
@@ -321,7 +335,7 @@ impl sema<'_> {
                     );
                     return None;
                 }
-                Some((PathElemIndex(v as u64), elem.with(ty.quals), v as u64))
+                Some((vec![PathElemIndex(v as u64)], elem.with(ty.quals), v as u64))
             }
             (DesignatorField(_, sp), _) => {
                 diag::error("CR1311", *sp, "field designator used with a non-struct type");

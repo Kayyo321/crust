@@ -382,11 +382,6 @@ impl checker<'_> {
         let Some(ft) = func_of(fty) else { return };
         let (per_param, ret_region, _, ambiguous) = signature_regions(&ft);
         let arg_o: Vec<origin_set> = args.iter().map(|a| self.operand(st, a)).collect();
-        // The callee may store any argument through a mutable pointer argument.
-        let mut all = origin_set::new();
-        for o in &arg_o {
-            all.extend(o.iter().copied());
-        }
         for (i, a) in args.iter().enumerate() {
             let at = match a {
                 OperandCopy(p) | OperandMove(p) => self.ty(p),
@@ -401,11 +396,19 @@ impl checker<'_> {
                 continue;
             }
             let raw = is_pointer(at.ty);
+            // What the callee could store through this argument: the other
+            // arguments. A value cannot hold a borrow of itself.
+            let mut others = origin_set::new();
+            for (j, o) in arg_o.iter().enumerate() {
+                if j != i {
+                    others.extend(o.iter().copied());
+                }
+            }
             for x in arg_o[i].clone() {
                 if let OriginLoan(l) = x {
                     let lp = self.loans[l as usize].place.clone();
                     if let (false, PlaceBaseLocal(t)) = (lp.has_deref(), &lp.base) {
-                        st.o[*t as usize].extend(all.iter().copied());
+                        st.o[*t as usize].extend(others.iter().copied());
                         if raw {
                             st.o[*t as usize].insert(OriginUnknown);
                         }

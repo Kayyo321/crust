@@ -217,6 +217,10 @@ impl parser<'_> {
         }
         self.recovering = true;
         let t = self.peek().clone();
+        if t.kind == TokenKindOther {
+            diag::error("CR1103", t.span, format!("stray `{}` in program", t.text));
+            return;
+        }
         diag::error("CR1201", t.span, format!("expected {what}, found {}", Self::describe(&t)));
     }
 
@@ -430,6 +434,20 @@ impl parser<'_> {
         if self.at(SymModule) {
             diag::error("CR1402", start, "`module` must be the first declaration in the file");
             self.recovering = true;
+            return None;
+        }
+        if self.peek().is_ident_named(SymImport)
+            && (self.peek_at(1).is(SymLBrace) || self.peek_at(1).is(SymStar))
+        {
+            diag::error("CR1415", start, "a C file cannot import Crust modules")
+                .help("include the C header that `crust --emit=header` generates for the module");
+            while !self.at(SymSemi) && !self.at_eof() {
+                self.bump();
+            }
+            self.bump();
+            return None;
+        }
+        if self.unknown_type_name() {
             return None;
         }
         if self.at(SymImport) {
