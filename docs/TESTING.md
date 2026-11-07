@@ -173,7 +173,7 @@ Colors show when stderr is a terminal, and never in captured logs. `ENSURE_COLOR
 - `is_some`, `is_ok`, `is_err`, `panics`, `stdout`, `stderr`, `first`, `last`, and `item` continue the chain with what they picked out: the inner value, the panic message, the stream as text, or the list item.
 - A failed process check shows the exit status and both streams, so the test needs no message of its own.
 - `.named("what")` heads the failure message. Use it when the value is not obvious from the line.
-- New Rust tests use `ensure`. The integration tests in `tests/` and `crepe/tests/` already do. Unit tests next to the code still use `assert!`, and move over when they are next touched. Do not use `assert!`, `unwrap()`, or `panic!()` to check a result in a test: they say "assertion failed" and little else. To pull a value out of a `Result` or `Option` in setup code, use `ensure(x).is_ok().into_value()` or `.is_some()`.
+- New Rust tests use `ensure`. Unit tests next to the code, the integration tests in `tests/`, and `crepe/tests/` all do. Do not use `assert!`, `unwrap()`, or `panic!()` to check a result in a test: they say "assertion failed" and little else. To pull a value out of a `Result` or `Option` in setup code, use `ensure(x).is_ok().into_value()` or `.is_some()`.
 - `is_ok` and `is_some` do not need the success value to be `Debug`. `is_err` does, because it shows the value it did not expect. For a type with no `Debug`, check `ensure(x.err()).is_some()`.
 - The `ensure` crate has no dependencies and is never part of `crust` or `crepe` themselves.
 

@@ -505,93 +505,119 @@ fn insert_dotted(table: &mut toml_table, keys: &[String], value: TomlValue) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     fn s(text: &str) -> TomlValue {
         TomlValueString(text.to_string())
     }
 
+    /// The table at `value`, or a failure that says what was there instead.
+    fn table_of<'a>(value: Option<&'a TomlValue>, what: &str) -> &'a toml_table {
+        let found = ensure(value)
+            .named(what)
+            .is_some()
+            .satisfies("is a table", |v| matches!(v, TomlValueTable(_)))
+            .into_value();
+        match found {
+            TomlValueTable(table) => table,
+            _ => unreachable!("`satisfies` reported a value that is not a table"),
+        }
+    }
+
+    /// The array at `value`, or a failure that says what was there instead.
+    fn array_of<'a>(value: Option<&'a TomlValue>, what: &str) -> &'a [TomlValue] {
+        let found = ensure(value)
+            .named(what)
+            .is_some()
+            .satisfies("is an array", |v| matches!(v, TomlValueArray(_)))
+            .into_value();
+        match found {
+            TomlValueArray(items) => items,
+            _ => unreachable!("`satisfies` reported a value that is not an array"),
+        }
+    }
+
+    fn parsed(text: &str) -> toml_table {
+        ensure(parse(text)).named("parsing the document").is_ok().into_value()
+    }
+
     #[test]
     fn parses_tables_strings_and_scalars() {
-        let doc = parse(
+        let doc = parsed(
             "# comment\n[package]\nname = \"app\" # trailing\nversion = '0.1.0'\n\
              count = 1_000\nneg = -3\nflag = true\n",
-        )
-        .unwrap();
-        let TomlValueTable(pkg) = doc.get("package").unwrap() else { panic!() };
-        assert_eq!(pkg.get("name"), Some(&s("app")));
-        assert_eq!(pkg.get("version"), Some(&s("0.1.0")));
-        assert_eq!(pkg.get("count"), Some(&TomlValueInteger(1000)));
-        assert_eq!(pkg.get("neg"), Some(&TomlValueInteger(-3)));
-        assert_eq!(pkg.get("flag"), Some(&TomlValueBoolean(true)));
+        );
+        let pkg = table_of(doc.get("package"), "[package]");
+        ensure(pkg.get("name")).is(Some(&s("app")));
+        ensure(pkg.get("version")).is(Some(&s("0.1.0")));
+        ensure(pkg.get("count")).is(Some(&TomlValueInteger(1000)));
+        ensure(pkg.get("neg")).is(Some(&TomlValueInteger(-3)));
+        ensure(pkg.get("flag")).is(Some(&TomlValueBoolean(true)));
     }
 
     #[test]
     fn parses_escapes() {
-        let doc = parse(r#"a = "x\"y\\z\né""#).unwrap();
-        assert_eq!(doc.get("a"), Some(&s("x\"y\\z\né")));
+        let doc = parsed(r#"a = "x\"y\\z\né""#);
+        ensure(doc.get("a")).is(Some(&s("x\"y\\z\né")));
     }
 
     #[test]
     fn parses_multiline_arrays_and_inline_tables() {
-        let doc = parse(
+        let doc = parsed(
             "srcs = [\n  \"a.cr\", # first\n  \"b.cr\",\n]\n\
              dep = { path = \"../x\", nested.k = 1 }\n",
-        )
-        .unwrap();
-        assert_eq!(doc.get("srcs"), Some(&TomlValueArray(vec![s("a.cr"), s("b.cr")])));
-        let TomlValueTable(dep) = doc.get("dep").unwrap() else { panic!() };
-        assert_eq!(dep.get("path"), Some(&s("../x")));
-        let TomlValueTable(nested) = dep.get("nested").unwrap() else { panic!() };
-        assert_eq!(nested.get("k"), Some(&TomlValueInteger(1)));
+        );
+        ensure(doc.get("srcs")).is(Some(&TomlValueArray(vec![s("a.cr"), s("b.cr")])));
+        let dep = table_of(doc.get("dep"), "dep");
+        ensure(dep.get("path")).is(Some(&s("../x")));
+        let nested = table_of(dep.get("nested"), "dep.nested");
+        ensure(nested.get("k")).is(Some(&TomlValueInteger(1)));
     }
 
     #[test]
     fn parses_arrays_of_tables() {
-        let doc =
-            parse("[[bin]]\nname = \"a\"\n[[bin]]\nname = \"b\"\n[bin.extra]\nx = 1\n").unwrap();
-        let TomlValueArray(bins) = doc.get("bin").unwrap() else { panic!() };
-        assert_eq!(bins.len(), 2);
-        let TomlValueTable(second) = &bins[1] else { panic!() };
-        assert_eq!(second.get("name"), Some(&s("b")));
-        assert!(second.get("extra").is_some());
+        let doc = parsed("[[bin]]\nname = \"a\"\n[[bin]]\nname = \"b\"\n[bin.extra]\nx = 1\n");
+        let bins = array_of(doc.get("bin"), "[[bin]]");
+        ensure(bins).named("[[bin]] tables").has_len(2);
+        let second = table_of(bins.get(1), "second [[bin]]");
+        ensure(second.get("name")).is(Some(&s("b")));
+        ensure(second.get("extra")).named("[bin.extra]").is_some();
     }
 
     #[test]
     fn parses_dotted_keys_and_headers() {
-        let doc = parse("a.b = 1\n[dependencies.util]\npath = \"../util\"\n").unwrap();
-        let TomlValueTable(a) = doc.get("a").unwrap() else { panic!() };
-        assert_eq!(a.get("b"), Some(&TomlValueInteger(1)));
-        let TomlValueTable(deps) = doc.get("dependencies").unwrap() else { panic!() };
-        assert!(deps.get("util").is_some());
+        let doc = parsed("a.b = 1\n[dependencies.util]\npath = \"../util\"\n");
+        let a = table_of(doc.get("a"), "a");
+        ensure(a.get("b")).is(Some(&TomlValueInteger(1)));
+        let deps = table_of(doc.get("dependencies"), "[dependencies]");
+        ensure(deps.get("util")).named("[dependencies.util]").is_some();
     }
 
     #[test]
     fn parses_multiline_strings() {
-        let doc = parse("a = \"\"\"\nline1\nline2\"\"\"\nb = '''\nraw\\n'''\n").unwrap();
-        assert_eq!(doc.get("a"), Some(&s("line1\nline2")));
-        assert_eq!(doc.get("b"), Some(&s("raw\\n")));
+        let doc = parsed("a = \"\"\"\nline1\nline2\"\"\"\nb = '''\nraw\\n'''\n");
+        ensure(doc.get("a")).is(Some(&s("line1\nline2")));
+        ensure(doc.get("b")).is(Some(&s("raw\\n")));
     }
 
     #[test]
     fn rejects_duplicate_keys_and_tables() {
-        assert!(parse("a = 1\na = 2\n").unwrap_err().contains("defined twice"));
-        assert!(parse("[x]\n[x]\n").unwrap_err().contains("defined twice"));
+        ensure(parse("a = 1\na = 2\n")).is_err().contains("defined twice");
+        ensure(parse("[x]\n[x]\n")).is_err().contains("defined twice");
     }
 
     #[test]
     fn rejects_malformed_input_with_line_numbers() {
-        let err = parse("a = 1\nb = \"open\n").unwrap_err();
-        assert!(err.starts_with("line 2:"), "{err}");
-        assert!(parse("a = 1 2\n").is_err());
-        assert!(parse("a = 1.5\n").is_err());
-        assert!(parse("a = [1, 2\n").is_err());
-        assert!(parse("= 1\n").is_err());
+        ensure(parse("a = 1\nb = \"open\n")).is_err().starts_with("line 2:");
+        for bad in ["a = 1 2\n", "a = 1.5\n", "a = [1, 2\n", "= 1\n"] {
+            ensure(parse(bad)).named(format!("parse of {bad:?}")).is_err();
+        }
     }
 
     #[test]
     fn quote_round_trips() {
         let text = "a \"b\" \\ c\n\u{1}";
-        let doc = parse(&format!("k = {}\n", quote(text))).unwrap();
-        assert_eq!(doc.get("k"), Some(&s(text)));
+        let doc = parsed(&format!("k = {}\n", quote(text)));
+        ensure(doc.get("k")).is(Some(&s(text)));
     }
 }

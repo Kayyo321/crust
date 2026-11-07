@@ -462,6 +462,7 @@ fn check_duplicate_targets(targets: &[build_target], errors: &mut Vec<String>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     fn parse_with(
         text: &str,
@@ -479,50 +480,55 @@ mod tests {
             "{Package}[dependencies]\nutil = {{ path = \"../util\" }}\n\
              parse = {{ git = \"https://example.invalid/p\", rev = \"a1b2\" }}\n"
         );
-        let (m, warnings) = parse_with(&text, &[]).unwrap();
-        assert!(warnings.is_empty());
-        assert_eq!(m.name, "app");
-        assert_eq!(m.dependencies[0].source, DepSourcePath("../util".to_string()));
+        let (m, warnings) = ensure(parse_with(&text, &[])).is_ok().into_value();
+        ensure(warnings).named("warnings").is_empty();
+        ensure(m.name.as_str()).named("package name").is("app");
+        ensure(&m.dependencies[0].source).is(&DepSourcePath("../util".to_string()));
         let git = DepSourceGit {
             url: "https://example.invalid/p".to_string(),
             rev: Some("a1b2".to_string()),
         };
-        assert_eq!(m.dependencies[1].source, git);
+        ensure(&m.dependencies[1].source).is(&git);
     }
 
     #[test]
     fn rejects_registry_dependencies() {
         let text = format!("{Package}[dependencies]\nmathx = \"1.2\"\n");
-        let errors = parse_with(&text, &[]).unwrap_err();
-        assert!(errors[0].contains("registry dependencies are not supported in 0.1"), "{errors:?}");
+        ensure(parse_with(&text, &[]))
+            .is_err()
+            .first()
+            .contains("registry dependencies are not supported in 0.1");
     }
 
     #[test]
     fn rejects_bad_package_names_with_hint() {
-        let errors =
-            parse_with("[package]\nname = \"My-App\"\nversion = \"0.1.0\"\n", &[]).unwrap_err();
-        assert!(errors[0].contains("snake_case"));
-        assert!(errors[0].contains("try `my_app`"), "{errors:?}");
+        let result = parse_with("[package]\nname = \"My-App\"\nversion = \"0.1.0\"\n", &[]);
+        ensure(result).is_err().first().contains("snake_case").contains("try `my_app`");
     }
 
     #[test]
     fn rejects_missing_fields_and_bad_versions() {
-        let errors = parse_with("[package]\nname = \"app\"\nversion = \"1.0\"\n", &[]).unwrap_err();
-        assert!(errors[0].contains("invalid version"));
-        let errors = parse_with("[dependencies]\n", &[]).unwrap_err();
-        assert!(errors[0].contains("missing `[package]`"));
+        let result = parse_with("[package]\nname = \"app\"\nversion = \"1.0\"\n", &[]);
+        ensure(result).is_err().first().contains("invalid version");
+        ensure(parse_with("[dependencies]\n", &[]))
+            .is_err()
+            .first()
+            .contains("missing `[package]`");
     }
 
     #[test]
     fn adds_default_targets_per_kind() {
-        let (m, _) = parse_with(Package, &["src/main.crm", "src/lib.crm"]).unwrap();
+        let (m, _) =
+            ensure(parse_with(Package, &["src/main.crm", "src/lib.crm"])).is_ok().into_value();
         let kinds: Vec<_> = m.targets.iter().map(|t| (t.kind, t.name.as_str())).collect();
-        assert_eq!(kinds, vec![(TargetKindBin, "app"), (TargetKindLib, "app")]);
+        ensure(kinds)
+            .named("default targets")
+            .is(vec![(TargetKindBin, "app"), (TargetKindLib, "app")]);
 
         let text = format!("{Package}[[bin]]\nname = \"tool\"\nroot = \"src/tool.crm\"\n");
-        let (m, _) = parse_with(&text, &["src/main.crm"]).unwrap();
-        assert_eq!(m.targets.len(), 1);
-        assert_eq!(m.targets[0].name, "tool");
+        let (m, _) = ensure(parse_with(&text, &["src/main.crm"])).is_ok().into_value();
+        ensure(m.targets.len()).named("targets").is(1);
+        ensure(m.targets[0].name.as_str()).named("target name").is("tool");
     }
 
     #[test]
@@ -531,43 +537,43 @@ mod tests {
             "{Package}[[bin]]\nname = \"legacy-tool\"\nsources = [\"src/tool/main.cr\"]\n\
              include = [\"src/tool\"]\n[[test]]\nname = \"t\"\nroot = \"tests/t.crm\"\n"
         );
-        let (m, _) = parse_with(&text, &[]).unwrap();
-        assert_eq!(m.targets[0].sources, vec![PathBuf::from("src/tool/main.cr")]);
-        assert_eq!(m.targets[0].include, vec![PathBuf::from("src/tool")]);
-        assert_eq!(m.targets[1].kind, TargetKindTest);
+        let (m, _) = ensure(parse_with(&text, &[])).is_ok().into_value();
+        ensure(m.targets[0].sources.clone()).is(vec![PathBuf::from("src/tool/main.cr")]);
+        ensure(m.targets[0].include.clone()).is(vec![PathBuf::from("src/tool")]);
+        ensure(m.targets[1].kind).is(TargetKindTest);
     }
 
     #[test]
     fn rejects_invalid_targets() {
         let both =
             format!("{Package}[[bin]]\nname = \"a\"\nroot = \"src/a.crm\"\nsources = [\"a.cr\"]\n");
-        assert!(parse_with(&both, &[]).unwrap_err()[0].contains("not both"));
+        ensure(parse_with(&both, &[])).is_err().first().contains("not both");
         let neither = format!("{Package}[[bin]]\nname = \"a\"\n");
-        assert!(parse_with(&neither, &[]).unwrap_err()[0].contains("set `root`"));
+        ensure(parse_with(&neither, &[])).is_err().first().contains("set `root`");
         let dup = format!(
             "{Package}[[bin]]\nname = \"a\"\nroot = \"src/a.crm\"\n\
              [[bin]]\nname = \"a\"\nroot = \"src/b.crm\"\n"
         );
-        assert!(parse_with(&dup, &[]).unwrap_err()[0].contains("two [[bin]] targets"));
+        ensure(parse_with(&dup, &[])).is_err().first().contains("two [[bin]] targets");
         let reserved = format!("{Package}[[bin]]\nname = \"modules\"\nroot = \"src/a.crm\"\n");
-        assert!(parse_with(&reserved, &[]).unwrap_err()[0].contains("reserved"));
+        ensure(parse_with(&reserved, &[])).is_err().first().contains("reserved");
         let wrong_ext = format!("{Package}[[bin]]\nname = \"a\"\nroot = \"src/a.cr\"\n");
-        assert!(parse_with(&wrong_ext, &[]).unwrap_err()[0].contains(".crm"));
+        ensure(parse_with(&wrong_ext, &[])).is_err().first().contains(".crm");
     }
 
     #[test]
     fn rejects_bad_dependency_tables() {
         let both = format!("{Package}[dependencies]\nx = {{ path = \"a\", git = \"b\" }}\n");
-        assert!(parse_with(&both, &[]).unwrap_err()[0].contains("both"));
+        ensure(parse_with(&both, &[])).is_err().first().contains("both");
         let rev = format!("{Package}[dependencies]\nx = {{ path = \"a\", rev = \"b\" }}\n");
-        assert!(parse_with(&rev, &[]).unwrap_err()[0].contains("`rev`"));
+        ensure(parse_with(&rev, &[])).is_err().first().contains("`rev`");
         let selfdep = format!("{Package}[dependencies]\napp = {{ path = \"a\" }}\n");
-        assert!(parse_with(&selfdep, &[]).unwrap_err()[0].contains("itself"));
+        ensure(parse_with(&selfdep, &[])).is_err().first().contains("itself");
     }
 
     #[test]
     fn hints_snake_case_names() {
-        assert_eq!(name_hint("Hello World"), "hello_world");
-        assert_eq!(name_hint("9lives"), "pkg_9lives");
+        ensure(name_hint("Hello World")).is("hello_world");
+        ensure(name_hint("9lives")).is("pkg_9lives");
     }
 }

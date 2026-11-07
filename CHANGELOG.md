@@ -13,6 +13,7 @@ Newest first. Each release has a `## MAJOR.MINOR.PATCH` heading, and `tests/vers
 Still a testing change: the language, the ABI, the CLIs, and the safety rules are unchanged.
 
 - **Test failures read like compiler errors.** An `ensure` failure now shows `error:`, the file, line, and column, the source line with the exact call underlined, and `wanted`, `found`, `type`, and the checks that passed before it. Text is shown as text, with the first differing character or a line diff. A failed process check shows its exit status, stdout, and stderr. Colors show in a terminal only (`ENSURE_COLOR`, `NO_COLOR`, `CLICOLOR_FORCE`). See [TESTING.md](docs/TESTING.md), section 9.
+- All unit tests in `src/` and `crepe/src/` use `ensure`, and no test uses a bare `unwrap()` or `panic!()` to check a result.
 - New checks: `first()`, `last()`, and `item(n)` on lists; `is_ok()` and `is_some()` no longer need the success value to be `Debug`.
 
 ## 0.1.1

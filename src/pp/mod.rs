@@ -1253,6 +1253,7 @@ const Predefined: &[(&str, &str)] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     fn expand(src: &str) -> String {
         let id = diag::add_file(
@@ -1274,36 +1275,32 @@ mod tests {
 
     #[test]
     fn expands_object_and_function_macros() {
-        assert_eq!(
-            expand("#define N 4\n#define SQ(x) ((x)*(x))\nint a = SQ(N);"),
-            "int a = ((4)*(4));"
-        );
+        ensure(expand("#define N 4\n#define SQ(x) ((x)*(x))\nint a = SQ(N);"))
+            .is("int a = ((4)*(4));");
     }
 
     #[test]
     fn stringizes_and_pastes() {
-        assert_eq!(
-            expand("#define S(x) #x\n#define C(a,b) a##b\nS(a + \"b\") C(x, 1)"),
-            "\"a + \\\"b\\\"\" x1"
-        );
+        ensure(expand("#define S(x) #x\n#define C(a,b) a##b\nS(a + \"b\") C(x, 1)"))
+            .is("\"a + \\\"b\\\"\" x1");
     }
 
     #[test]
     fn stops_recursive_expansion() {
         // C23 6.10.5.6, example 3 (shortened).
-        assert_eq!(expand("#define f(a) a*g\n#define g(a) f(a)\nf(2)(9)"), "2*9*g");
+        ensure(expand("#define f(a) a*g\n#define g(a) f(a)\nf(2)(9)")).is("2*9*g");
     }
 
     #[test]
     fn handles_va_args_and_va_opt() {
         let out =
             expand("#define F(fmt, ...) p(fmt __VA_OPT__(,) __VA_ARGS__)\nF(\"a\") F(\"b\", 1, 2)");
-        assert_eq!(out, "p(\"a\") p(\"b\", 1, 2)");
+        ensure(out).is("p(\"a\") p(\"b\", 1, 2)");
     }
 
     #[test]
     fn evaluates_conditionals() {
         let src = "#define A 2\n#if A > 1 && defined(A) && !defined B\nyes\n#elif 1\nno\n#else\nno\n#endif\n#ifdef B\nno\n#endif";
-        assert_eq!(expand(src), "yes");
+        ensure(expand(src)).is("yes");
     }
 }

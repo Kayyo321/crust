@@ -197,40 +197,40 @@ pub fn absolute(path: &Path) -> crepe_result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     #[test]
     fn accepts_snake_case_names_only() {
-        assert!(is_snake_ident("app"));
-        assert!(is_snake_ident("my_app2"));
-        assert!(!is_snake_ident("MyApp"));
-        assert!(!is_snake_ident("my-app"));
-        assert!(!is_snake_ident("2app"));
-        assert!(!is_snake_ident("_app"));
-        assert!(!is_snake_ident(""));
+        for name in ["app", "my_app2"] {
+            ensure(is_snake_ident(name)).named(format!("`{name}` is snake_case")).is_true();
+        }
+        for name in ["MyApp", "my-app", "2app", "_app", ""] {
+            ensure(is_snake_ident(name)).named(format!("`{name}` is snake_case")).is_false();
+        }
     }
 
     #[test]
     fn accepts_dotted_module_names() {
-        assert!(is_module_name("net.http"));
-        assert!(!is_module_name("net..http"));
-        assert!(!is_module_name("net.Http"));
-        assert!(!is_module_name(""));
+        ensure(is_module_name("net.http")).named("`net.http` is a module name").is_true();
+        for name in ["net..http", "net.Http", ""] {
+            ensure(is_module_name(name)).named(format!("`{name}` is a module name")).is_false();
+        }
     }
 
     #[test]
     fn computes_relative_paths() {
         let rel = relative_path(Path::new("/a/b/c"), Path::new("/a/d"));
-        assert_eq!(rel, PathBuf::from("../../d"));
+        ensure(rel).is(PathBuf::from("../../d"));
         let same = relative_path(Path::new("/a/b"), Path::new("/a/b"));
-        assert_eq!(same, PathBuf::from("."));
+        ensure(same).is(PathBuf::from("."));
         let inside = relative_path(Path::new("/a"), Path::new("/a/b/./c"));
-        assert_eq!(inside, PathBuf::from("b/c"));
+        ensure(inside).is(PathBuf::from("b/c"));
     }
 
     #[test]
     fn normalizes_parent_components() {
-        assert_eq!(normalize(Path::new("/a/b/../c/./d")), PathBuf::from("/a/c/d"));
-        assert_eq!(normalize(Path::new("../x")), PathBuf::from("../x"));
+        ensure(normalize(Path::new("/a/b/../c/./d"))).is(PathBuf::from("/a/c/d"));
+        ensure(normalize(Path::new("../x"))).is(PathBuf::from("../x"));
     }
 
     #[test]
@@ -241,6 +241,6 @@ mod tests {
         let mut b = fnv_hasher::new();
         b.field("a");
         b.field("bc");
-        assert_ne!(a.finish(), b.finish());
+        ensure(a.finish()).named("hash of fields `ab`, `c`").cannot_be(b.finish());
     }
 }

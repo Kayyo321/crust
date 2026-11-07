@@ -611,6 +611,7 @@ fn visit_post(graph: &module_graph, node: usize, seen: &mut [bool], order: &mut 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     fn specs(scan: &source_scan) -> Vec<&str> {
         scan.imports.iter().map(|i| i.spec.as_str()).collect()
@@ -624,10 +625,10 @@ mod tests {
                     export { x } from \"net.url\";\nexport * from \"mathx\";\n\
                     export int f(void) { return 0; }\n";
         let scan = scan_source(text);
-        assert_eq!(scan.module_name, Some(("net.http".to_string(), 4)));
-        assert_eq!(specs(&scan), vec!["net.socket", "mathx/core", "net.url", "mathx"]);
-        assert_eq!(scan.includes, vec!["util.hr".to_string()]);
-        assert_eq!(scan.imports[0].line, 8);
+        ensure(scan.module_name.clone()).named("module name").is(Some(("net.http".to_string(), 4)));
+        ensure(specs(&scan)).is(vec!["net.socket", "mathx/core", "net.url", "mathx"]);
+        ensure(scan.includes.clone()).named("includes").is(vec!["util.hr".to_string()]);
+        ensure(scan.imports[0].line).named("line of the first import").is(8);
     }
 
     #[test]
@@ -637,8 +638,8 @@ mod tests {
                     const char *s = \"import { c } from \\\"string\\\";\";\n\
                     char q = '\"'; int n = 1'000'000;\nimport { d } from \"real\";\n";
         let scan = scan_source(text);
-        assert_eq!(scan.module_name, Some(("app".to_string(), 1)));
-        assert_eq!(specs(&scan), vec!["real"]);
+        ensure(scan.module_name.clone()).named("module name").is(Some(("app".to_string(), 1)));
+        ensure(specs(&scan)).is(vec!["real"]);
     }
 
     #[test]
@@ -647,14 +648,14 @@ mod tests {
                     export struct p { int from; };\nimport { y } from \"outer\";\n\
                     #define BAD import { z } from \"macro\";\n";
         let scan = scan_source(text);
-        assert_eq!(specs(&scan), vec!["outer"]);
+        ensure(specs(&scan)).is(vec!["outer"]);
     }
 
     #[test]
     fn reads_attributed_reexports() {
         let text =
             "module app;\n[[crust::c_abi]] export int g(void);\nexport { g } from \"lib.g\";\n";
-        assert_eq!(specs(&scan_source(text)), vec!["lib.g"]);
+        ensure(specs(&scan_source(text))).is(vec!["lib.g"]);
     }
 
     fn set(items: &[&str]) -> BTreeSet<String> {
@@ -665,23 +666,19 @@ mod tests {
     fn resolves_specifiers() {
         let local = set(&["geometry", "net.http"]);
         let deps = set(&["mathx"]);
-        assert_eq!(
-            resolve_spec("geometry", &local, &deps),
-            Ok(ImportTargetLocal("geometry".into()))
-        );
+        ensure(resolve_spec("geometry", &local, &deps))
+            .is(Ok(ImportTargetLocal("geometry".into())));
         let root = ImportTargetExtern { package: "mathx".into(), module: "mathx".into() };
-        assert_eq!(resolve_spec("mathx", &local, &deps), Ok(root));
+        ensure(resolve_spec("mathx", &local, &deps)).is(Ok(root));
         let core = ImportTargetExtern { package: "mathx".into(), module: "core".into() };
-        assert_eq!(resolve_spec("mathx/core", &local, &deps), Ok(core));
-        assert!(
-            resolve_spec("other/x", &local, &deps)
-                .unwrap_err()
-                .contains("not listed under [dependencies]")
-        );
-        assert!(resolve_spec("missing", &local, &deps).unwrap_err().contains("no module named"));
-        assert!(resolve_spec("Bad", &local, &deps).is_err());
+        ensure(resolve_spec("mathx/core", &local, &deps)).is(Ok(core));
+        ensure(resolve_spec("other/x", &local, &deps))
+            .is_err()
+            .contains("not listed under [dependencies]");
+        ensure(resolve_spec("missing", &local, &deps)).is_err().contains("no module named");
+        ensure(resolve_spec("Bad", &local, &deps)).is_err();
         let both = set(&["mathx"]);
-        assert!(resolve_spec("mathx", &both, &deps).unwrap_err().contains("ambiguous"));
+        ensure(resolve_spec("mathx", &both, &deps)).is_err().contains("ambiguous");
     }
 
     fn file(rel: &str, text: &str) -> source_file {
@@ -699,8 +696,8 @@ mod tests {
             file("src/b.crm", "module b;\nimport { y } from \"c\";\n"),
             file("src/c.crm", "module c;\nimport { z } from \"a\";\n"),
         ];
-        let errors = build_graph("pkg", Path::new("/pkg"), files, &BTreeSet::new()).unwrap_err();
-        assert!(errors[0].contains("import cycle: a -> b -> c -> a"), "{errors:?}");
+        let result = build_graph("pkg", Path::new("/pkg"), files, &BTreeSet::new());
+        ensure(result).is_err().first().contains("import cycle: a -> b -> c -> a");
     }
 
     #[test]
@@ -713,12 +710,14 @@ mod tests {
             file("src/b.crm", "module a;\n"),
             file("src/c.crm", "int main(void) { return 0; }\n"),
         ];
-        let errors = build_graph("pkg", Path::new("/pkg"), files, &BTreeSet::new()).unwrap_err();
-        let all = errors.join("\n");
-        assert!(all.contains("duplicate module name `a`"), "{all}");
-        assert!(all.contains("src/a.crm:2: import from \"nope\""), "{all}");
-        assert!(all.contains("package `ext` is not listed"), "{all}");
-        assert!(all.contains("src/c.crm: missing `module"), "{all}");
+        let result = build_graph("pkg", Path::new("/pkg"), files, &BTreeSet::new());
+        let errors = ensure(result).is_err().into_value().join("\n");
+        ensure(errors)
+            .named("build errors")
+            .contains("duplicate module name `a`")
+            .contains("src/a.crm:2: import from \"nope\"")
+            .contains("package `ext` is not listed")
+            .contains("src/c.crm: missing `module");
     }
 
     #[test]
@@ -732,15 +731,14 @@ mod tests {
             file("src/utilx.crm", "module util;\n"),
             file("src/lone.crm", "module lone;\n"),
         ];
-        let (graph, warnings) =
-            build_graph("pkg", Path::new("/pkg"), files, &BTreeSet::new()).unwrap();
-        assert_eq!(warnings.len(), 1, "{warnings:?}");
-        assert!(warnings[0].contains("should be named `utilx`"));
+        let built = build_graph("pkg", Path::new("/pkg"), files, &BTreeSet::new());
+        let (graph, warnings) = ensure(built).is_ok().into_value();
+        ensure(warnings).named("warnings").has_len(1).first().contains("should be named `utilx`");
         let root = graph.by_name["pkg"];
         let order: Vec<_> = dependency_order(&graph, &[root])
             .iter()
             .map(|&i| graph.modules[i].name.clone())
             .collect();
-        assert_eq!(order, vec!["util", "geo.shapes", "pkg"]);
+        ensure(order).named("build order").is(vec!["util", "geo.shapes", "pkg"]);
     }
 }

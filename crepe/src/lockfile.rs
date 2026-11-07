@@ -114,6 +114,7 @@ pub fn save_lock(package_dir: &Path, lock: &lock_file) -> crepe_result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     #[test]
     fn lockfile_round_trips_sorted() {
@@ -136,17 +137,19 @@ mod tests {
             ],
         };
         let text = format_lock(&lock);
-        assert!(text.starts_with("version = 1\n\n[[package]]\nname = \"alpha\""), "{text}");
-        assert!(!text.contains('#'));
-        let parsed = parse_lock(&text).unwrap();
-        assert_eq!(parsed.packages.len(), 2);
-        assert_eq!(parsed.find("zeta"), lock.packages.first());
+        ensure(&text)
+            .named("lockfile text")
+            .starts_with("version = 1\n\n[[package]]\nname = \"alpha\"")
+            .cannot_contain('#');
+        let parsed = ensure(parse_lock(&text)).is_ok().into_value();
+        ensure(parsed.packages.len()).named("packages after a round trip").is(2);
+        ensure(parsed.find("zeta")).is(lock.packages.first());
     }
 
     #[test]
     fn rejects_unknown_versions() {
-        assert!(parse_lock("version = 2\n").unwrap_err().contains("unsupported"));
-        assert!(parse_lock("").is_err());
-        assert_eq!(parse_lock("version = 1\n").unwrap(), lock_file::default());
+        ensure(parse_lock("version = 2\n")).is_err().contains("unsupported");
+        ensure(parse_lock("")).is_err();
+        ensure(parse_lock("version = 1\n")).is_ok().is(lock_file::default());
     }
 }

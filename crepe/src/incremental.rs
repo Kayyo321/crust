@@ -147,6 +147,7 @@ pub fn hash_source(path: &Path, includes_of: &dyn Fn(&str) -> Vec<String>) -> cr
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     fn state(source: u64, flags: u64, imports: &[(&str, u64)]) -> module_state {
         module_state {
@@ -159,44 +160,36 @@ mod tests {
     #[test]
     fn state_round_trips() {
         let s = state(1, 2, &[("geometry", 3), ("mathx/core", 0xdead_beef)]);
-        assert_eq!(parse_state(&format_state(&s)), Some(s));
-        assert_eq!(parse_state("garbage"), None);
-        assert_eq!(parse_state("crepe-module-state 1\nsource zz\n"), None);
+        ensure(parse_state(&format_state(&s))).named("state after a round trip").is(Some(s));
+        ensure(parse_state("garbage")).is_none();
+        ensure(parse_state("crepe-module-state 1\nsource zz\n")).is_none();
     }
 
     #[test]
     fn fresh_when_nothing_changed() {
         let s = state(1, 2, &[("geometry", 3)]);
-        assert_eq!(stale_reason(Some(&s), &s.clone(), true), None);
+        ensure(stale_reason(Some(&s), &s.clone(), true)).is_none();
     }
 
     #[test]
     fn rebuilds_on_source_flags_or_missing_outputs() {
         let old = state(1, 2, &[]);
-        assert!(stale_reason(None, &old, true).is_some());
-        assert_eq!(stale_reason(Some(&old), &old, false).as_deref(), Some("outputs are missing"));
-        assert_eq!(
-            stale_reason(Some(&old), &state(9, 2, &[]), true).as_deref(),
-            Some("source changed")
-        );
-        assert_eq!(
-            stale_reason(Some(&old), &state(1, 9, &[]), true).as_deref(),
-            Some("flags changed")
-        );
+        ensure(stale_reason(None, &old, true)).is_some();
+        ensure(stale_reason(Some(&old), &old, false)).is_some().is("outputs are missing");
+        ensure(stale_reason(Some(&old), &state(9, 2, &[]), true)).is_some().is("source changed");
+        ensure(stale_reason(Some(&old), &state(1, 9, &[]), true)).is_some().is("flags changed");
     }
 
     #[test]
     fn rebuilds_importer_only_when_an_interface_hash_changes() {
         let old = state(1, 2, &[("geometry", 3), ("util", 4)]);
         // A body-only change in `geometry` leaves its interface hash at 3: fresh.
-        assert_eq!(
-            stale_reason(Some(&old), &state(1, 2, &[("geometry", 3), ("util", 4)]), true),
-            None
-        );
+        let same = state(1, 2, &[("geometry", 3), ("util", 4)]);
+        ensure(stale_reason(Some(&old), &same, true)).is_none();
         let changed = stale_reason(Some(&old), &state(1, 2, &[("geometry", 7), ("util", 4)]), true);
-        assert_eq!(changed.as_deref(), Some("interface of geometry changed"));
+        ensure(changed).is_some().is("interface of geometry changed");
         let dropped = stale_reason(Some(&old), &state(1, 2, &[("geometry", 3)]), true);
-        assert_eq!(dropped.as_deref(), Some("imports changed"));
+        ensure(dropped).is_some().is("imports changed");
     }
 
     #[test]
@@ -205,8 +198,8 @@ mod tests {
         bytes.extend_from_slice(&1u32.to_le_bytes());
         bytes.extend_from_slice(&0x0123_4567_89ab_cdefu64.to_le_bytes());
         bytes.extend_from_slice(b"payload");
-        assert_eq!(parse_interface_hash(&bytes), Some(0x0123_4567_89ab_cdef));
-        assert_eq!(parse_interface_hash(b"CRMX\x01\0\0\0\0\0\0\0\0\0\0\0"), None);
-        assert_eq!(parse_interface_hash(b"CRMI"), None);
+        ensure(parse_interface_hash(&bytes)).is(Some(0x0123_4567_89ab_cdef));
+        ensure(parse_interface_hash(b"CRMX\x01\0\0\0\0\0\0\0\0\0\0\0")).is_none();
+        ensure(parse_interface_hash(b"CRMI")).is_none();
     }
 }

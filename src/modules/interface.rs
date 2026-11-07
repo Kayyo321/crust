@@ -716,6 +716,7 @@ pub fn print_file(p: &Path) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     #[test]
     fn round_trips_and_keeps_hash() {
@@ -760,15 +761,16 @@ mod tests {
             ],
         );
         let bytes = encode(&i);
-        let d = decode(&bytes).unwrap();
-        assert_eq!(d.hash, i.hash);
-        assert_eq!(d.exports.len(), 2);
-        assert!(print(&d).contains("struct rt_point { int x; }"));
+        let d = ensure(decode(&bytes)).is_ok().into_value();
+        ensure(d.hash).named("hash after a round trip").is(i.hash);
+        ensure(d.exports.len()).named("exports after a round trip").is(2);
+        ensure(print(&d)).contains("struct rt_point { int x; }");
     }
 
     #[test]
     fn rejects_corrupt_files() {
-        assert!(decode(b"CRMI\x01\0\0\0\0\0\0\0\0\0\0\0xx").is_err());
-        assert!(decode(b"nope").is_err());
+        // The interface type has no Debug, so look at the error side.
+        ensure(decode(b"CRMI\x01\0\0\0\0\0\0\0\0\0\0\0xx").err()).is_some();
+        ensure(decode(b"nope").err()).is_some();
     }
 }

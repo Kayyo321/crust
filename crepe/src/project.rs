@@ -317,11 +317,14 @@ pub fn add_dependency_text(text: &str, name: &str, value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ensure::ensure;
 
     #[test]
     fn templates_start_with_the_header() {
-        assert!(manifest_template("app").starts_with("# Ko, (Baczynski-Bruce) 2026; Apache 2.0\n"));
-        assert!(gitignore_template().ends_with("build/\n"));
+        ensure(manifest_template("app"))
+            .named("manifest template")
+            .starts_with("# Ko, (Baczynski-Bruce) 2026; Apache 2.0\n");
+        ensure(gitignore_template()).named(".gitignore template").ends_with("build/\n");
         let main = main_template("app");
         let expected = [
             "/**",
@@ -341,23 +344,23 @@ mod tests {
             "",
         ]
         .join("\n");
-        assert_eq!(main, expected);
+        ensure(main).named("main template").is(expected);
     }
 
     #[test]
     fn manifest_template_is_valid() {
-        let (m, warnings) =
-            manifest::parse_manifest(&manifest_template("app"), Path::new("/x"), &|_| true)
-                .unwrap();
-        assert_eq!(m.name, "app");
-        assert!(warnings.is_empty());
+        let parsed =
+            manifest::parse_manifest(&manifest_template("app"), Path::new("/x"), &|_| true);
+        let (m, warnings) = ensure(parsed).named("template parse").is_ok().into_value();
+        ensure(m.name.as_str()).named("package name").is("app");
+        ensure(warnings).named("warnings").is_empty();
     }
 
     #[test]
     fn rejects_reserved_and_invalid_names() {
-        assert!(check_package_name("int").is_err());
-        assert!(check_package_name("My-App").is_err());
-        assert!(check_package_name("my_app").is_ok());
+        ensure(check_package_name("int")).is_err();
+        ensure(check_package_name("My-App")).is_err();
+        ensure(check_package_name("my_app")).is_ok();
     }
 
     #[test]
@@ -365,30 +368,26 @@ mod tests {
         let text = "[package]\nname = \"a\"\n\n[dependencies]\nx = { path = \"../x\" }\n\n\
                     [[bin]]\nname = \"a\"\n";
         let out = add_dependency_text(text, "y", "{ path = \"../y\" }");
-        assert_eq!(
-            out,
-            "[package]\nname = \"a\"\n\n[dependencies]\nx = { path = \"../x\" }\n\
-             y = { path = \"../y\" }\n\n[[bin]]\nname = \"a\"\n"
-        );
+        ensure(out).is("[package]\nname = \"a\"\n\n[dependencies]\nx = { path = \"../x\" }\n\
+             y = { path = \"../y\" }\n\n[[bin]]\nname = \"a\"\n");
     }
 
     #[test]
     fn adds_dependencies_table_when_missing() {
         let out = add_dependency_text("[package]\nname = \"a\"\n", "y", "{ git = \"u\" }");
-        assert_eq!(out, "[package]\nname = \"a\"\n\n[dependencies]\ny = { git = \"u\" }\n");
+        ensure(out).is("[package]\nname = \"a\"\n\n[dependencies]\ny = { git = \"u\" }\n");
         let empty = add_dependency_text("[dependencies]\n", "y", "{ git = \"u\" }");
-        assert_eq!(empty, "[dependencies]\ny = { git = \"u\" }\n");
+        ensure(empty).is("[dependencies]\ny = { git = \"u\" }\n");
     }
 
     #[test]
     fn removes_dependencies_in_both_forms() {
         let text = "[dependencies]\nx = { path = \"../x\" }\ny = { path = \"../y\" }\n";
-        assert_eq!(
-            remove_dependency_text(text, "x").unwrap(),
-            "[dependencies]\ny = { path = \"../y\" }\n"
-        );
-        assert_eq!(remove_dependency_text(text, "z"), None);
+        ensure(remove_dependency_text(text, "x"))
+            .is_some()
+            .is("[dependencies]\ny = { path = \"../y\" }\n");
+        ensure(remove_dependency_text(text, "z")).is_none();
         let table = "[dependencies.x]\npath = \"../x\"\n[[bin]]\nname = \"a\"\n";
-        assert_eq!(remove_dependency_text(table, "x").unwrap(), "[[bin]]\nname = \"a\"\n");
+        ensure(remove_dependency_text(table, "x")).is_some().is("[[bin]]\nname = \"a\"\n");
     }
 }
