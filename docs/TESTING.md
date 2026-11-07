@@ -192,3 +192,15 @@ failure(|| ensure(3).is(5)).contains("wanted: exactly 5");
 ```
 
 `ensure/tests/` holds the tests of the checks. A new check needs a passing case, a failing case that matches its message, and a mutation check: change an expected string and see the test fail.
+
+### Failures in the file-based runners
+
+`tests/suite.rs` and `tests/examples.rs` build their failures from the same `ensure::report` type, so every failure in this repo looks alike. A failure points at the right line, and it names the next step:
+
+- A marker that crust did not satisfy is reported at the marker line, with the codes crust reported on that line, and a `help` when the code appeared on another line.
+- An error nobody expected is reported at its own line and column with crust's message, and says to add a `//~ ERROR CRnnnn` marker if it is intended.
+- A program that does not compile, exits non-zero, or prints other output shows the exit status, both streams, a diff of the output, and crust's own diagnostics. Exit status 99 gets a note that it is valgrind's leak check (G-LEAK).
+- At the end, one summary lists every failed case, so a run shows all of them and not only the first.
+- Paths in reports are relative to the repository root.
+
+The runners use `report` directly: `report::error(title).at(file, line, column).row("wanted", ..).text_diff(wanted, found).help(..)`.

@@ -14,7 +14,7 @@
 use ensure::*;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 fn crust() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_crust"))
@@ -67,7 +67,34 @@ fn json_field<'a>(s: &'a str, key: &str) -> Option<&'a str> {
     }
 }
 
-fn check_fails(f: &Path, out: &Path) -> Result<(), String> {
+/// The repository root, with a trailing slash, as it appears in absolute paths.
+fn repo_prefix() -> String {
+    format!("{}/", env!("CARGO_MANIFEST_DIR"))
+}
+
+/// `path` relative to the repository, as text.
+fn relative(path: &Path) -> String {
+    relative_text(&path.display().to_string())
+}
+
+/// `text` with the repository root cut out of every path in it, so reports show `examples/...`.
+fn relative_text(text: &str) -> String {
+    text.replace(&repo_prefix(), "")
+}
+
+/// `output` with the repository root cut out of its streams.
+fn relative_output(output: &Output) -> Output {
+    Output {
+        status: output.status,
+        stdout: relative_text(&String::from_utf8_lossy(&output.stdout)).into_bytes(),
+        stderr: relative_text(&String::from_utf8_lossy(&output.stderr)).into_bytes(),
+    }
+}
+
+/// An example fails with one or more reports.
+type failure = Vec<report>;
+
+fn check_fails(f: &Path, out: &Path) -> Result<(), failure> {
     let o = Command::new(crust())
         .arg(f)
         .arg("--error-format=json")
@@ -86,35 +113,87 @@ fn check_fails(f: &Path, out: &Path) -> Result<(), String> {
         got.insert((ln, json_field(line, "code").unwrap_or("null").to_string()));
     }
     let want = markers(f);
-    if got != want {
-        return Err(format!("{}: expected {want:?}, got {got:?}\n{stderr}", f.display()));
+    if got == want {
+        return Ok(());
     }
-    Ok(())
+    let text = std::fs::read_to_string(f).unwrap_or_default();
+    let mut reports = Vec::new();
+    for (line, code) in want.difference(&got) {
+        let source_line = text.lines().nth(*line as usize - 1).unwrap_or("");
+        let at = source_line.find("//~ ERROR").unwrap_or(0);
+        let reported: Vec<&str> =
+            got.iter().filter(|(l, _)| l == line).map(|(_, c)| c.as_str()).collect();
+        reports.push(
+            report::error(format!("crust did not report {code}"))
+                .at(relative(f), *line, source_line[..at].chars().count() as u32 + 1)
+                .underline(source_line[at..].chars().count())
+                .label(format!(
+                    "this line is marked as an error, and crust did not report {code} here"
+                ))
+                .row("wanted", format!("{code} on line {line}"))
+                .row(
+                    "found",
+                    if reported.is_empty() {
+                        "no error on this line".to_string()
+                    } else {
+                        reported.join(", ")
+                    },
+                ),
+        );
+    }
+    for (line, code) in got.difference(&want) {
+        reports.push(
+            report::error(format!("crust reported an unexpected {code}"))
+                .at(relative(f), *line, 0)
+                .row("wanted", "no error on this line (it has no `//~ ERROR` marker)")
+                .row("found", code.as_str())
+                .help(format!("if the error is intended, end the line with `//~ ERROR {code}`")),
+        );
+    }
+    let human = Command::new(crust()).arg(f).arg("-o").arg(out.join("x")).output().unwrap();
+    reports.push(report::error(format!("what crust printed for {}", relative(f))).text_block(
+        "crust",
+        relative_text(String::from_utf8_lossy(&human.stderr).trim_end()).as_str(),
+    ));
+    Err(reports)
 }
 
-fn run(cmd: &mut Command) -> Result<String, String> {
+fn run(cmd: &mut Command) -> Result<String, failure> {
     let o = cmd.output().unwrap();
     if !o.status.success() {
-        return Err(format!(
-            "{cmd:?} failed:\n{}{}",
-            String::from_utf8_lossy(&o.stdout),
-            String::from_utf8_lossy(&o.stderr)
-        ));
+        return Err(vec![
+            report::error("a command in the example failed")
+                .row("command", relative_text(&format!("{cmd:?}")))
+                .row("wanted", "exit status 0")
+                .process(&relative_output(&o)),
+        ]);
     }
     Ok(String::from_utf8_lossy(&o.stdout).into_owned())
 }
 
-fn expect(path: &Path, got: &str) -> Result<(), String> {
+fn expect(path: &Path, got: &str) -> Result<(), failure> {
     match std::fs::read_to_string(path) {
         Ok(want) if want == got => Ok(()),
-        Ok(want) => {
-            Err(format!("{}: output differs\n--- expected\n{want}--- got\n{got}", path.display()))
-        }
-        Err(_) => Err(format!("{} is missing", path.display())),
+        Ok(want) => Err(vec![
+            report::error(format!("{} does not match what the example prints", relative(path)))
+                .at(relative(path), 1, 0)
+                .row(
+                    "wanted",
+                    format!("the contents of {}", path.file_name().unwrap().to_string_lossy()),
+                )
+                .row("found", format!("{} bytes on stdout", got.len()))
+                .text_diff(&want, got)
+                .help("if the new output is intended, update the .stdout file"),
+        ]),
+        Err(_) => Err(vec![
+            report::error(format!("{} is missing", relative(path)))
+                .row("wanted", "a file with the output the example prints")
+                .help("create it from the example's stdout"),
+        ]),
     }
 }
 
-fn check_example(dir: &Path) -> Result<(), String> {
+fn check_example(dir: &Path) -> Result<(), failure> {
     let name = dir.file_name().unwrap().to_string_lossy().into_owned();
     let out = scratch(&name);
     let fs = files(dir);
@@ -168,8 +247,22 @@ fn every_example_builds_and_runs() {
         .collect();
     dirs.sort();
     ensure(dirs.len()).named("example folders").is_at_least(13);
-    let failures: Vec<String> = dirs.iter().filter_map(|d| check_example(d).err()).collect();
+    let failures: Vec<(String, failure)> = dirs
+        .iter()
+        .filter_map(|d| check_example(d).err().map(|reports| (relative(d), reports)))
+        .collect();
     if !failures.is_empty() {
-        panic!("{} examples failed:\n\n{}", failures.len(), failures.join("\n\n"));
+        let mut text = String::new();
+        for (_, reports) in &failures {
+            for r in reports {
+                text.push_str(&r.render());
+                text.push_str("\n\n");
+            }
+        }
+        let names: Vec<String> = failures.iter().map(|(n, _)| n.clone()).collect();
+        let summary =
+            report::error(format!("{} of {} examples failed", failures.len(), dirs.len()))
+                .text_block("failed examples", &names.join("\n"));
+        panic!("\n{text}{}", summary.render());
     }
 }
