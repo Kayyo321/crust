@@ -71,3 +71,20 @@ fn a_name_and_the_value_survive_the_chain() {
     let value = ensure(41 + 1).named("answer").is(42).into_value();
     ensure(value).is(42);
 }
+
+#[test]
+fn picking_an_item_continues_the_chain_with_it() {
+    ensure(vec!["a", "b", "c"]).first().is("a");
+    ensure(vec!["a", "b", "c"]).last().is("c");
+    ensure(vec!["a", "b", "c"]).item(1).is("b");
+    ensure(vec!["only".to_string()]).first().contains("on");
+}
+
+/// A type with no `Debug`, to show which checks do not need it.
+struct opaque;
+
+#[test]
+fn is_some_and_is_ok_do_not_need_the_value_to_be_debug() {
+    let _ = ensure(Some(opaque)).is_some().into_value();
+    let _ = ensure(Ok::<opaque, String>(opaque)).is_ok().into_value();
+}

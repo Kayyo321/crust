@@ -2,9 +2,14 @@
 * Ko, (Baczynski-Bruce) 2026; Apache 2.0
 */
 // Checks every subject supports: equality, membership, a custom test, and floats.
-use crate::report::{show, show_all};
+use crate::pretty;
 use crate::subjects::subject;
 use std::fmt::Debug;
+
+fn list<U: Debug>(values: &[U]) -> String {
+    let parts: Vec<String> = values.iter().map(|v| format!("{v:?}")).collect();
+    format!("[{}]", parts.join(", "))
+}
 
 impl<T: Debug> subject<T> {
     /// The value equals `expected`. The two may differ in type, like `String` and `&str`.
@@ -14,9 +19,10 @@ impl<T: Debug> subject<T> {
         T: PartialEq<U>,
     {
         if self.value != expected {
-            self.fail_with_value(format!("exactly {}", show(&expected)));
+            let r = self.complaint(format!("exactly {expected:?}"));
+            self.raise(pretty::difference(r, &expected, &self.value));
         }
-        self
+        self.passed("is")
     }
 
     /// The value differs from `other`.
@@ -26,9 +32,9 @@ impl<T: Debug> subject<T> {
         T: PartialEq<U>,
     {
         if self.value == other {
-            self.fail_with_value(format!("anything but {}", show(&other)));
+            self.fail_with_value(format!("anything but {other:?}"));
         }
-        self
+        self.passed("cannot_be")
     }
 
     /// The value equals one of `options`.
@@ -39,9 +45,9 @@ impl<T: Debug> subject<T> {
     {
         let options: Vec<U> = options.into_iter().collect();
         if !options.iter().any(|option| self.value == *option) {
-            self.fail_with_value(format!("one of {}", show_all(&options)));
+            self.fail_with_value(format!("one of {}", list(&options)));
         }
-        self
+        self.passed("is_one_of")
     }
 
     /// The value equals none of `options`.
@@ -52,9 +58,9 @@ impl<T: Debug> subject<T> {
     {
         let options: Vec<U> = options.into_iter().collect();
         if options.iter().any(|option| self.value == *option) {
-            self.fail_with_value(format!("none of {}", show_all(&options)));
+            self.fail_with_value(format!("none of {}", list(&options)));
         }
-        self
+        self.passed("cannot_be_one_of")
     }
 
     /// The value passes `test`. `description` finishes the sentence "wanted a value that ...".
@@ -63,7 +69,7 @@ impl<T: Debug> subject<T> {
         if !test(&self.value) {
             self.fail_with_value(format!("a value that {description}"));
         }
-        self
+        self.passed("satisfies")
     }
 }
 
@@ -74,8 +80,11 @@ impl subject<f64> {
         // Written as a bool so that NaN, which is close to nothing, fails the check.
         let close = (self.value - expected).abs() <= tolerance;
         if !close {
-            self.fail_with_value(format!("{expected:?}, give or take {tolerance:?}"));
+            let r = self.complaint(format!("{expected:?}, give or take {tolerance:?}"));
+            let r = pretty::found(r, &self.value, true)
+                .row("off by", format!("{:?}", (self.value - expected).abs()));
+            self.raise(r);
         }
-        self
+        self.passed("is_close_to")
     }
 }

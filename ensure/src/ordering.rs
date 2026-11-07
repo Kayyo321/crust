@@ -2,7 +2,6 @@
 * Ko, (Baczynski-Bruce) 2026; Apache 2.0
 */
 // Order checks. Bounds are inclusive only where the name says "at" or "between".
-use crate::report::show;
 use crate::subjects::subject;
 use std::fmt::Debug;
 
@@ -14,9 +13,9 @@ impl<T: Debug> subject<T> {
         T: PartialOrd<U>,
     {
         if !(self.value > floor) {
-            self.fail_with_value(format!("above {}", show(&floor)));
+            self.fail_with_value(format!("above {floor:?}"));
         }
-        self
+        self.passed("is_above")
     }
 
     /// The value is less than `ceiling`.
@@ -26,9 +25,9 @@ impl<T: Debug> subject<T> {
         T: PartialOrd<U>,
     {
         if !(self.value < ceiling) {
-            self.fail_with_value(format!("below {}", show(&ceiling)));
+            self.fail_with_value(format!("below {ceiling:?}"));
         }
-        self
+        self.passed("is_below")
     }
 
     /// The value is `minimum` or more.
@@ -38,9 +37,9 @@ impl<T: Debug> subject<T> {
         T: PartialOrd<U>,
     {
         if !(self.value >= minimum) {
-            self.fail_with_value(format!("at least {}", show(&minimum)));
+            self.fail_with_value(format!("at least {minimum:?}"));
         }
-        self
+        self.passed("is_at_least")
     }
 
     /// The value is `maximum` or less.
@@ -50,9 +49,9 @@ impl<T: Debug> subject<T> {
         T: PartialOrd<U>,
     {
         if !(self.value <= maximum) {
-            self.fail_with_value(format!("at most {}", show(&maximum)));
+            self.fail_with_value(format!("at most {maximum:?}"));
         }
-        self
+        self.passed("is_at_most")
     }
 
     /// The value is from `low` to `high`, both included.
@@ -62,8 +61,8 @@ impl<T: Debug> subject<T> {
         T: PartialOrd<U>,
     {
         if !(self.value >= low && self.value <= high) {
-            self.fail_with_value(format!("from {} to {}", show(&low), show(&high)));
+            self.fail_with_value(format!("from {low:?} to {high:?}"));
         }
-        self
+        self.passed("is_between")
     }
 }

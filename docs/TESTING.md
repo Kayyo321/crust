@@ -125,13 +125,38 @@ ensure(|| divide(1, 0)).panics().contains("zero");
 ensure(Command::new(crust).output().unwrap()).succeeds().stdout().contains("crust");
 ```
 
-A failed check panics at the line of the test, and shows what it wanted and what it found:
+A failed check reads like a compiler error. It names the test line, underlines the exact call, and says what it wanted, what it found, and how they differ:
 
 ```
-ensure failed: exit code
-  wanted: exactly 0
-   found: 3
+error: ensure failed: exit code
+  --> tests/abi.rs:40:37
+   |
+38 |     let out = run(&mut build);
+39 |     let code = out.status.code().unwrap();
+40 |     ensure(code).named("exit code").is(0);
+   |                                     ^^^^^ wanted exactly 0, found 3
+41 |     ensure(out.stdout).is_empty();
+   |
+   = wanted: exactly 0
+   =  found: 3
+   =   type: i32
 ```
+
+Every report has the same parts:
+
+| Part | Shows |
+|---|---|
+| `error:` line | `ensure failed`, then the `.named(..)` name if there is one |
+| `-->` and the snippet | File, line, and column of the check, two lines above it, one below, and the call underlined |
+| `wanted`, `found` | What the check needed and what it got. Text is shown as text, not as escapes. |
+| `type` | The Rust type of the value, without module paths |
+| `after` | The checks that already passed in the chain, like `.is_some().is_above()` |
+| `differs` | For one-line text, the first character where it parts from what was wanted |
+| `difference` block | For multi-line text, lists, and structs, a line diff: `-` only in what was wanted, `+` only in what was found |
+| `stdout` and `stderr` blocks | For a failed process check, what the process wrote |
+| `help` | A hint when the cause is easy to name: letter case, surrounding whitespace, a trailing newline |
+
+Colors show when stderr is a terminal, and never in captured logs. `ENSURE_COLOR=always` or `never` overrides the guess. `NO_COLOR` turns colors off and `CLICOLOR_FORCE=1` turns them on.
 
 | Kind | Checks |
 |---|---|
@@ -139,15 +164,31 @@ ensure failed: exit code
 | Order | `is_above(x)`, `is_below(x)`, `is_at_least(x)`, `is_at_most(x)`, `is_between(low, high)`, `is_close_to(x, tolerance)` for `f64` |
 | Shape | `is_true()`, `is_false()`, `is_some()`, `is_none()`, `is_ok()`, `is_err()` |
 | Text | `starts_with(..)`, `ends_with(..)`, `contains(..)`, `cannot_contain(..)` |
-| Lists, sets, maps | `has_len(n)`, `is_empty()`, `cannot_be_empty()`, `contains(item)`, `cannot_contain(item)` |
+| Lists, sets, maps | `has_len(n)`, `is_empty()`, `cannot_be_empty()`, `contains(item)`, `cannot_contain(item)`; on a `Vec`, `first()`, `last()`, `item(n)` |
 | Files | `exists()`, `cannot_exist()`, `is_a_file()`, `is_a_folder()` on anything path-like |
 | Processes | `succeeds()`, `fails()`, `exits_with(code)`, then `stdout()` or `stderr()` as text, on a `std::process::Output` |
 | Panics | `panics()`, `does_not_panic()` on a closure |
 
 - A passing check returns the subject, so checks chain: `ensure(n).is_above(1).is_below(9)`.
-- `is_some`, `is_ok`, `is_err`, `panics`, `stdout`, and `stderr` continue the chain with what they unwrapped: the inner value, the panic message, or the stream as text.
+- `is_some`, `is_ok`, `is_err`, `panics`, `stdout`, `stderr`, `first`, `last`, and `item` continue the chain with what they picked out: the inner value, the panic message, the stream as text, or the list item.
 - A failed process check shows the exit status and both streams, so the test needs no message of its own.
 - `.named("what")` heads the failure message. Use it when the value is not obvious from the line.
-- New Rust tests use `ensure`. The integration tests in `tests/` and `crepe/tests/` already do. Unit tests next to the code still use `assert!`, and move over when they are next touched.
+- New Rust tests use `ensure`. The integration tests in `tests/` and `crepe/tests/` already do. Unit tests next to the code still use `assert!`, and move over when they are next touched. Do not use `assert!`, `unwrap()`, or `panic!()` to check a result in a test: they say "assertion failed" and little else. To pull a value out of a `Result` or `Option` in setup code, use `ensure(x).is_ok().into_value()` or `.is_some()`.
+- `is_ok` and `is_some` do not need the success value to be `Debug`. `is_err` does, because it shows the value it did not expect. For a type with no `Debug`, check `ensure(x.err()).is_some()`.
 - The `ensure` crate has no dependencies and is never part of `crust` or `crepe` themselves.
-- Test the checks themselves in `ensure/tests/`. A new check needs a passing case and a failing case that matches its message.
+
+### Testing a failure message
+
+A report echoes the source line of the failed call. A test that checks a message would match its own expected text there. Take the message `without_source`:
+
+```rust
+use ensure::*;
+
+fn failure<R>(check: impl FnOnce() -> R) -> subject<String> {
+    without_source(|| ensure(check).panics())
+}
+
+failure(|| ensure(3).is(5)).contains("wanted: exactly 5");
+```
+
+`ensure/tests/` holds the tests of the checks. A new check needs a passing case, a failing case that matches its message, and a mutation check: change an expected string and see the test fail.

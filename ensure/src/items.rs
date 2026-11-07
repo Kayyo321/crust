@@ -2,7 +2,7 @@
 * Ko, (Baczynski-Bruce) 2026; Apache 2.0
 */
 // Checks on things that hold other things: text, lists, arrays, sets, and maps.
-use crate::report::show;
+use crate::pretty;
 use crate::subjects::subject;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Debug;
@@ -157,30 +157,31 @@ impl<T: measured + Debug> subject<T> {
     pub fn has_len(self, length: usize) -> Self {
         let actual = self.value.measure();
         if actual != length {
-            self.fail(
-                format!("a length of {length}"),
-                format!("a length of {actual}: {}", show(&self.value)),
-            );
+            let r =
+                self.complaint(format!("a length of {length}")).row("length", actual.to_string());
+            self.raise(pretty::found(r, &self.value, true));
         }
-        self
+        self.passed("has_len")
     }
 
     /// There is nothing in it.
     #[track_caller]
     pub fn is_empty(self) -> Self {
-        if self.value.measure() != 0 {
-            self.fail_with_value("nothing in it");
+        let length = self.value.measure();
+        if length != 0 {
+            let r = self.complaint("nothing in it").row("length", length.to_string());
+            self.raise(pretty::found(r, &self.value, true));
         }
-        self
+        self.passed("is_empty")
     }
 
     /// There is something in it.
     #[track_caller]
     pub fn cannot_be_empty(self) -> Self {
         if self.value.measure() == 0 {
-            self.fail("something in it", show(&self.value));
+            self.fail_with_value("something in it");
         }
-        self
+        self.passed("cannot_be_empty")
     }
 }
 
@@ -192,9 +193,11 @@ impl<T: Debug> subject<T> {
         T: holds<N>,
     {
         if !self.value.holds_needle(&needle) {
-            self.fail_with_value(format!("to contain {}", show(&needle)));
+            let r =
+                pretty::found(self.complaint(format!("to contain {needle:?}")), &self.value, true);
+            self.raise(pretty::case_hint(r, &format!("{:?}", self.value), &format!("{needle:?}")));
         }
-        self
+        self.passed("contains")
     }
 
     /// It does not hold `needle`.
@@ -204,8 +207,51 @@ impl<T: Debug> subject<T> {
         T: holds<N>,
     {
         if self.value.holds_needle(&needle) {
-            self.fail_with_value(format!("not to contain {}", show(&needle)));
+            self.fail_with_value(format!("not to contain {needle:?}"));
         }
-        self
+        self.passed("cannot_contain")
+    }
+}
+
+/// Checks that pick one item out of a list and continue the chain with it:
+/// `ensure(errors).first().contains("cycle")`.
+impl<I: Debug> subject<Vec<I>> {
+    /// The list has a first item.
+    #[track_caller]
+    pub fn first(self) -> subject<I> {
+        self.pick("first", 0)
+    }
+
+    /// The list has a last item.
+    #[track_caller]
+    pub fn last(self) -> subject<I> {
+        let index = self.value.len().saturating_sub(1);
+        self.pick("last", index)
+    }
+
+    /// The list has an item at `index` (counting from 0).
+    #[track_caller]
+    pub fn item(self, index: usize) -> subject<I> {
+        self.pick("item", index)
+    }
+
+    #[track_caller]
+    fn pick(self, check: &'static str, index: usize) -> subject<I> {
+        let length = self.value.len();
+        if index >= length {
+            let wanted = match check {
+                "first" => "a first item".to_string(),
+                "last" => "a last item".to_string(),
+                _ => format!("an item at index {index}"),
+            };
+            let r = self.complaint(wanted).row("length", length.to_string());
+            self.raise(pretty::found(r, &self.value, true));
+        }
+        let subject { mut value, name, trail } = self;
+        subject {
+            value: value.swap_remove(index),
+            name,
+            trail: subject::<Vec<I>>::trail_after(trail, check),
+        }
     }
 }

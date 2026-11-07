@@ -14,7 +14,7 @@ impl<T: AsRef<Path> + Debug> subject<T> {
         if !self.value.as_ref().exists() {
             self.fail_with_value("a path that exists");
         }
-        self
+        self.passed("exists")
     }
 
     /// Nothing exists at the path.
@@ -23,36 +23,44 @@ impl<T: AsRef<Path> + Debug> subject<T> {
         if self.value.as_ref().exists() {
             self.fail_with_value("a path that does not exist");
         }
-        self
+        self.passed("cannot_exist")
     }
 
     /// The path is a regular file.
     #[track_caller]
     pub fn is_a_file(self) -> Self {
-        if !self.value.as_ref().is_file() {
-            self.fail_with_value("a file");
+        let path = self.value.as_ref();
+        if !path.is_file() {
+            let found = if path.is_dir() {
+                "a folder"
+            } else if path.exists() {
+                "something that is neither a file nor a folder"
+            } else {
+                "nothing there"
+            };
+            let r = self.complaint("a file").row("found", found).row("path", format!("{path:?}"));
+            self.raise(r);
         }
-        self
+        self.passed("is_a_file")
     }
 
     /// The path is a folder.
     #[track_caller]
     pub fn is_a_folder(self) -> Self {
-        if !self.value.as_ref().is_dir() {
-            self.fail_with_value("a folder");
+        let path = self.value.as_ref();
+        if !path.is_dir() {
+            let found = if path.is_file() {
+                "a file"
+            } else if path.exists() {
+                "something that is neither a file nor a folder"
+            } else {
+                "nothing there"
+            };
+            let r = self.complaint("a folder").row("found", found).row("path", format!("{path:?}"));
+            self.raise(r);
         }
-        self
+        self.passed("is_a_folder")
     }
-}
-
-/// What a finished process did, worded for a failure: its status, then both streams.
-fn describe(output: &Output) -> String {
-    format!(
-        "{}\n--- stdout\n{}--- stderr\n{}",
-        output.status,
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    )
 }
 
 /// Checks on a finished process: `ensure(command.output().unwrap()).succeeds()`.
@@ -61,36 +69,47 @@ impl subject<Output> {
     #[track_caller]
     pub fn succeeds(self) -> Self {
         if !self.value.status.success() {
-            self.fail("exit status 0", describe(&self.value));
+            let r = self.complaint("exit status 0").process(&self.value);
+            self.raise(r);
         }
-        self
+        self.passed("succeeds")
     }
 
     /// The process did not exit with status 0.
     #[track_caller]
     pub fn fails(self) -> Self {
         if self.value.status.success() {
-            self.fail("a non-zero exit status", describe(&self.value));
+            let r = self.complaint("a non-zero exit status").process(&self.value);
+            self.raise(r);
         }
-        self
+        self.passed("fails")
     }
 
     /// The process exited with exactly `code`.
     #[track_caller]
     pub fn exits_with(self, code: i32) -> Self {
         if self.value.status.code() != Some(code) {
-            self.fail(format!("exit status {code}"), describe(&self.value));
+            let r = self.complaint(format!("exit status {code}")).process(&self.value);
+            self.raise(r);
         }
-        self
+        self.passed("exits_with")
     }
 
     /// Continues the chain with what the process wrote to stdout.
     pub fn stdout(self) -> subject<String> {
-        subject { value: String::from_utf8_lossy(&self.value.stdout).into_owned(), name: self.name }
+        subject {
+            value: String::from_utf8_lossy(&self.value.stdout).into_owned(),
+            name: self.name,
+            trail: subject::<Output>::trail_after(self.trail, "stdout"),
+        }
     }
 
     /// Continues the chain with what the process wrote to stderr.
     pub fn stderr(self) -> subject<String> {
-        subject { value: String::from_utf8_lossy(&self.value.stderr).into_owned(), name: self.name }
+        subject {
+            value: String::from_utf8_lossy(&self.value.stderr).into_owned(),
+            name: self.name,
+            trail: subject::<Output>::trail_after(self.trail, "stderr"),
+        }
     }
 }
